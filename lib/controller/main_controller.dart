@@ -1,4 +1,4 @@
-import 'package:hr_payroll/bloc/count_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/count_bloc.dart';
 
 class MainController {
   CountBloc currentIndexMenu = CountBloc();

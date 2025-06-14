@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_builder/responsive_builder.dart';
-import 'package:hr_payroll/screen/staff/attend_list.dart';
-import 'package:hr_payroll/screen/staff/document_list.dart';
-import 'package:hr_payroll/screen/staff/tim_list.dart';
-import 'package:hr_payroll/screen/detail_staff.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/attend_list.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/document_list.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/tim_list.dart';
+import 'package:hr_payroll_smartkidz/screen/detail_staff.dart';
 
 class HRMDashboard extends StatelessWidget {
   const HRMDashboard({super.key});

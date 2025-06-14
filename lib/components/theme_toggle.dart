@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hr_payroll/bloc/theme_bloc.dart';
-import 'package:hr_payroll/components/color_app.dart';
+import 'package:hr_payroll_smartkidz/bloc/theme_bloc.dart';
+import 'package:hr_payroll_smartkidz/components/color_app.dart';
 
 class ThemeToggle extends StatelessWidget {
   final bool showLabel;

@@ -1,7 +1,7 @@
-import 'package:hr_payroll/bloc/count_bloc.dart';
-import 'package:hr_payroll/bloc/list_bloc.dart';
-import 'package:hr_payroll/bloc/list_map_bloc.dart';
-import 'package:hr_payroll/bloc/map_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/count_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/list_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/list_map_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/map_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';

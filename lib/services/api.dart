@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:get_storage/get_storage.dart';
-import 'package:hr_payroll/controller/app_controller.dart';
+import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:http/http.dart' as http;
 
 GetStorage user = GetStorage();

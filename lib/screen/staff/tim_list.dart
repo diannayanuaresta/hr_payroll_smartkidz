@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_builder/responsive_builder.dart';
-import 'package:hr_payroll/components/color_app.dart';
+import 'package:hr_payroll_smartkidz/components/color_app.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hr_payroll/controller/tim_controller.dart';
-import 'package:hr_payroll/bloc/list_map_bloc.dart';
-import 'package:hr_payroll/bloc/custom_bloc.dart';
+import 'package:hr_payroll_smartkidz/controller/tim_controller.dart';
+import 'package:hr_payroll_smartkidz/bloc/list_map_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
 
 class TeamListScreen extends StatefulWidget {
   const TeamListScreen({super.key});

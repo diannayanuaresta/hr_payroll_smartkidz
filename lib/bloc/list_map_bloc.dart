@@ -1,5 +1,5 @@
 import 'package:bloc/bloc.dart';
-import 'package:hr_payroll/bloc/map_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/map_bloc.dart';
 
 class DataMap {
   ///Sts = Students

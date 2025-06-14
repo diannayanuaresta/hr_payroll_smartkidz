@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hr_payroll/bloc/theme_bloc.dart';
-import 'package:hr_payroll/components/color_app.dart';
-import 'package:hr_payroll/components/theme_toggle.dart';
-import 'package:hr_payroll/controller/app_controller.dart';
-import 'package:hr_payroll/services/api.dart';
+import 'package:hr_payroll_smartkidz/bloc/theme_bloc.dart';
+import 'package:hr_payroll_smartkidz/components/color_app.dart';
+import 'package:hr_payroll_smartkidz/components/theme_toggle.dart';
+import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
+import 'package:hr_payroll_smartkidz/services/api.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 

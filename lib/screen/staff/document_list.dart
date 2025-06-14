@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_builder/responsive_builder.dart';
-import 'package:hr_payroll/components/color_app.dart';
+import 'package:hr_payroll_smartkidz/components/color_app.dart';
 
 class DocumentList extends StatelessWidget {
   const DocumentList({super.key});

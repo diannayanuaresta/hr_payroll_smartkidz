@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:hr_payroll/screen/login.dart';
-import 'package:hr_payroll/screen/register.dart';
-import 'package:hr_payroll/screen/main_menu.dart';
-import 'package:hr_payroll/screen/staff/account_list.dart';
-import 'package:hr_payroll/screen/staff/attend_list.dart';
-import 'package:hr_payroll/screen/dashboard.dart';
-import 'package:hr_payroll/screen/staff/tim_list.dart';
-import 'package:hr_payroll/screen/staff/document_list.dart';
+import 'package:hr_payroll_smartkidz/screen/login.dart';
+import 'package:hr_payroll_smartkidz/screen/register.dart';
+import 'package:hr_payroll_smartkidz/screen/main_menu.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/account_list.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/attend_list.dart';
+import 'package:hr_payroll_smartkidz/screen/dashboard.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/tim_list.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/document_list.dart';
 
 class MyRoute {
   Route onRoute(RouteSettings settings) {

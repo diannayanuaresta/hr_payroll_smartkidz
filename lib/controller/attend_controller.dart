@@ -1,5 +1,5 @@
-import 'package:hr_payroll/bloc/count_bloc.dart';
-import 'package:hr_payroll/bloc/custom_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/count_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
 
 class AttendController {
   CountBloc currentIndexAttend = CountBloc();

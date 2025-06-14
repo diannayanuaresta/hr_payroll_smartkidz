@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hr_payroll/bloc/count_bloc.dart';
-import 'package:hr_payroll/bloc/custom_bloc.dart';
-import 'package:hr_payroll/bloc/list_map_bloc.dart';
-import 'package:hr_payroll/services/api.dart';
+import 'package:hr_payroll_smartkidz/bloc/count_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/list_map_bloc.dart';
+import 'package:hr_payroll_smartkidz/services/api.dart';
 
 class TimController {
   // Untuk menyimpan indeks tim yang dipilih

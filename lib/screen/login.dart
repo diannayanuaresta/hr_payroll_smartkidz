@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:hr_payroll/controller/app_controller.dart';
-import 'package:hr_payroll/services/api.dart';
+import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
+import 'package:hr_payroll_smartkidz/services/api.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
