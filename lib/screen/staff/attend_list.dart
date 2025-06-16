@@ -48,6 +48,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> with AutomaticKeepA
     // Add a timeout to prevent UI from hanging indefinitely
     Future<void> loadDataWithTimeout() async {
       try {
+        // Get date filter values from appController
+        String startDateStr = appController.tglAwalFilter.state;
+        String endDateStr = appController.tglAkhirFilter.state;
+        
+        // Update local date objects if filter values exist
+        if (startDateStr.isNotEmpty) {
+          _startDate = DateFormat('yyyy-MM-dd').parse(startDateStr);
+        } else {
+          _startDate = null;
+        }
+        
+        if (endDateStr.isNotEmpty) {
+          _endDate = DateFormat('yyyy-MM-dd').parse(endDateStr);
+        } else {
+          _endDate = null;
+        }
+        
         // Get the selected category
         final categories = appController.categoryListMap.isNotEmpty 
             ? appController.categoryListMap 
@@ -67,24 +84,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> with AutomaticKeepA
         final selectedCategoryName = categories[selectedIndex]['name'];
         print('Loading attendance data for category: $selectedCategoryName (ID: $selectedCategory)');
         
-        // Format dates for API request
-        String startDateStr = '';
-        String endDateStr = '';
-        
-        if (_startDate != null) {
-          startDateStr = DateFormat('yyyy-MM-dd').format(_startDate!);
-        }
-        
-        if (_endDate != null) {
-          endDateStr = DateFormat('yyyy-MM-dd').format(_endDate!);
-        }
+        // Format dates for API request - tidak perlu lagi karena sudah diambil dari appController
+        // String startDateStr = '';
+        // String endDateStr = '';
+        // 
+        // if (_startDate != null) {
+        //   startDateStr = DateFormat('yyyy-MM-dd').format(_startDate!);
+        // }
+        // 
+        // if (_endDate != null) {
+        //   endDateStr = DateFormat('yyyy-MM-dd').format(_endDate!);
+        // }
         
         print('Filtering with date range: $startDateStr to $endDateStr');
         
-        // Fetch attendance data based on the selected category and date range
-        // Add timeout to prevent hanging
-        final response = await _api.getAbsensi(selectedCategory, startDateStr, endDateStr)
-            .timeout(const Duration(seconds: 15), onTimeout: () {
+        // Tambahkan filter tambahan jika diperlukan
+        Map<String, dynamic> additionalFilters = {};
+        // Contoh: Jika ada filter tambahan dari UI
+        // if (_selectedStatus != null) {
+        //   additionalFilters['status'] = _selectedStatus;
+        // }
+        
+        // Fetch attendance data based on the selected category, date range, and additional filters
+        final response = await _api.getAbsensi(
+          selectedCategory, 
+          startDateStr, 
+          endDateStr,
+          additionalFilters: additionalFilters.isNotEmpty ? additionalFilters : null
+        ).timeout(const Duration(seconds: 15), onTimeout: () {
           throw TimeoutException('Loading attendance data timed out. Please try again.');
         });
         

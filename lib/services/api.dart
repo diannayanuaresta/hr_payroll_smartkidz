@@ -171,11 +171,25 @@ class Api {
     }
   }
 
-  Future getAbsensi(String category, String startDate, String endDate) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/attendance?category=$category');
-    if(startDate != '' && startDate != ""){
-       url = Uri.parse('${this.url}/api/v1/absensi/attendance?category=$category&startDate=$startDate&endDate=$endDate');
+  Future getAbsensi(String category, String startDate, String endDate, {Map<String, dynamic>? additionalFilters}) async {
+    var urlString = '${this.url}/api/v1/absensi/attendance?category=$category';
+    
+    // Perbaikan kondisi untuk memeriksa startDate dan endDate
+    if(startDate.isNotEmpty && endDate.isNotEmpty){
+      urlString += '&startDate=$startDate&endDate=$endDate';
     }
+    
+    // Tambahkan parameter tambahan jika tersedia
+    if (additionalFilters != null && additionalFilters.isNotEmpty) {
+      additionalFilters.forEach((key, value) {
+        if (value != null && value.toString().isNotEmpty) {
+          urlString += '&$key=$value';
+        }
+      });
+    }
+    
+    var url = Uri.parse(urlString);
+    print('API URL: $urlString'); // Tambahkan log untuk debugging
     
     try {
       // Add timeout to the HTTP request to prevent long waiting times
@@ -369,10 +383,10 @@ class Api {
       });
       
       var data = json.decode(response.body);
-      print('Get Attendance Response: $data');
+      print('Get Team Response: $data'); // Updated log message to be more specific
       return data;
     } catch (e) {
-      print('Error getting attendance data: $e');
+      print('Error getting team data: $e'); // Updated error message to be more specific
       return {
         'status': false,
         'message': e is TimeoutException ? e.message : 'Error connecting to server: $e',

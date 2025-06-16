@@ -1110,8 +1110,8 @@ class OvertimeCard extends StatelessWidget {
     // Execute the delete operation
     Future.delayed(Duration.zero, () async {
       try {
-        // Add a local timeout to ensure the API call doesn't hang indefinitely
-        final response = await Api().delAbsensi(id).timeout(
+        // Changed from delAbsensi to delLembur to correctly delete overtime records
+        final response = await Api().delLembur(id).timeout(
           const Duration(seconds: 10),
           onTimeout: () => {
             'status': false,

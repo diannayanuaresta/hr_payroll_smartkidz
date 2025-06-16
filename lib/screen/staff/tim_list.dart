@@ -101,6 +101,7 @@ class _TeamListScreenState extends State<TeamListScreen> {
                             final jabatan = team['jabatan'] ?? 'Tidak ada';
                             final status = team['status'] ?? 'Tidak ada';
                             final isNonGuru = team['isNonGuru'] == true ? 'Non Guru' : 'Guru';
+                            final role = team['role'] ?? 'Member'; // Tambahkan role
                             
                             return Container(
                               width: MediaQuery.of(context).size.width,
@@ -138,6 +139,8 @@ class _TeamListScreenState extends State<TeamListScreen> {
                                         _Tag(label: nip),
                                         const SizedBox(width: 6),
                                         _Tag(label: isNonGuru),
+                                        const SizedBox(width: 6),
+                                        _Tag(label: role), // Tambahkan tag role dengan warna berbeda
                                       ],
                                     ),
                                     Text(
@@ -164,7 +167,7 @@ class _TeamListScreenState extends State<TeamListScreen> {
                                 ),
                               ),
                             ));
-                          },
+                          }
                         );
                       },
                     ),

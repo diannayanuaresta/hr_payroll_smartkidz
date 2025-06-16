@@ -33,15 +33,30 @@ class TimController {
       
       // Periksa apakah response berhasil dan memiliki data
       if (response != null && response['data'] != null) {
-        // Tambahkan data baru
-        teamListData.addAll(response['data']);
+        // Proses data dengan format baru (leader dan members)
+        final data = response['data'];
+        List<Map<String, dynamic>> allTeamMembers = [];
         
-        // Tambahkan status 'active' ke setiap item jika belum ada
-        for (var i = 0; i < teamListData.state.listDataMap.length; i++) {
-          if (!teamListData.state.listDataMap[i].containsKey('status')) {
-            teamListData.state.listDataMap[i]['status'] = 'active';
+        // Proses data leader
+        if (data['leader'] != null) {
+          Map<String, dynamic> leaderData = Map<String, dynamic>.from(data['leader']);
+          leaderData['role'] = 'Leader';
+          leaderData['status'] = leaderData['status'] ?? 'active';
+          allTeamMembers.add(leaderData);
+        }
+        
+        // Proses data members
+        if (data['members'] != null && data['members'] is List) {
+          for (var member in data['members']) {
+            Map<String, dynamic> memberData = Map<String, dynamic>.from(member);
+            memberData['role'] = 'Member';
+            memberData['status'] = memberData['status'] ?? 'active';
+            allTeamMembers.add(memberData);
           }
         }
+        
+        // Tambahkan semua data ke teamListData
+        teamListData.addAll(allTeamMembers);
       }
     } catch (e) {
       // Tangani error jika terjadi
