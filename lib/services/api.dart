@@ -12,14 +12,49 @@ GetStorage tglLoginLast = GetStorage();
 //development or production
 GetStorage modeApplication = GetStorage();
 
-
-
 class Api {
   final url = 'https://dev-api-smartkidz.optimasolution.co.id';
   //url prod
   // final url = 'https://dev-api-smartkidz.optimasolution.co.id';
   // final urlimg = 'https://dev-smartkidz.optimasolution.co.id';
   //  final url = 'http://192.168.1.23:8020/';
+  
+  Future<Map<String, dynamic>> handleTokenRefreshAndRetry(Function originalApiCall) async {
+    try {
+      // First attempt with current token
+      var result = await originalApiCall();
+      
+      // Check if the error is due to invalid token
+      if (result['status'] == false && 
+          result['message'] != null && 
+          result['message'].toString().contains('Invalid Token')) {
+        
+        print('Token invalid, attempting to refresh...');
+        
+        // Try to refresh the token
+        var refreshResult = await tokenRefresh();
+        
+        if (refreshResult['status'] == true) {
+          print('Token refreshed successfully, retrying original request');
+          // Retry the original API call with new token
+          return await originalApiCall();
+        } else {
+          print('Token refresh failed: ${refreshResult['message']}');
+          // If refresh fails, return the refresh error
+          return refreshResult;
+        }
+      }
+      
+      // If not a token error or refresh not needed, return original result
+      return result;
+    } catch (e) {
+      print('Error in handleTokenRefreshAndRetry: $e');
+      return {
+        'status': false,
+        'message': 'Error handling token refresh: $e',
+      };
+    }
+  }
 
   Map<String, String> get headers => {
     'Authorization': 'Bearer ${user.read('token')}',
@@ -30,11 +65,11 @@ class Api {
     var url = Uri.parse('${this.url}/auth/absensi/login');
 
     var raw = {"email": email, "password": pass};
-    var response = await http.post(url,
-        headers: {
-          'Accept': 'application/json',
-        },
-        body: raw);
+    var response = await http.post(
+      url,
+      headers: {'Accept': 'application/json'},
+      body: raw,
+    );
     var data = json.decode(response.body);
     print(data);
     if (data['status'] == true) {
@@ -51,15 +86,34 @@ class Api {
   Future logout() async {
     var url = Uri.parse('${this.url}/auth/absensi/logout');
 
-    var response = await http.post(
-      url,
-      headers: headers,
-    );
+    var response = await http.post(url, headers: headers);
     var data = json.decode(response.body);
     if (data['status'] == true) {
+      // Hapus semua data sesi
       user.remove('token');
       user.remove('email');
       user.remove('pass');
+
+      // Hapus tanggal login terakhir
+      tglLoginLast.remove('date');
+
+      // Reset data user profile
+      appController.userProfile.changeVal({});
+      appController.userAccess.changeVal({});
+
+      // Reset data master
+      appController.categoryLMB.removeAll();
+      appController.categoryListMap = [];
+      appController.jabatanLMB.removeAll();
+      appController.jabatanListMap = [];
+      appController.divisiLMB.removeAll();
+      appController.divisiListMap = [];
+      appController.jenisLemburLMB.removeAll();
+      appController.jenisLemburListMap = [];
+
+      // Reset controller lainnya
+      appController.emailLogController.clear();
+      appController.passwordLogController.clear();
     }
     print(data);
 
@@ -67,41 +121,65 @@ class Api {
   }
 
   Future tokenRefresh() async {
-      var url = Uri.parse('${this.url}/auth/absensi/refresh');
+    var url = Uri.parse('${this.url}/auth/absensi/refresh');
 
-      var response = await http.post(
-        url,
-        headers: headers,
-      );
+    try {
+      var response = await http.post(url, headers: headers);
       var data = json.decode(response.body);
+      
+      print('Token refresh attempt: $data');
+      
       if (data['status'] == true) {
         user.remove('token');
-         user.write('token', data['data']['access_token']);
+        user.write('token', data['data']['access_token']);
+        print('Token refreshed successfully');
+        return data;
+      } else {
+        print('Token refresh failed: ${data['message']}');
+        // If token refresh fails, you might want to force logout
+        if (data['code'] == 401) {
+          // Clear user data
+          user.remove('token');
+          user.remove('email');
+          user.remove('pass');
+          tglLoginLast.remove('date');
+          
+          // Reset app controller data
+          appController.userProfile.changeVal({});
+          appController.userAccess.changeVal({});
+          
+          // You might want to navigate to login screen here
+          // This would typically be handled by the UI layer
+        }
+        return data;
       }
-      print(data);
-
-      return data;
+    } catch (e) {
+      print('Error refreshing token: $e');
+      return {
+        'status': false,
+        'message': 'Error connecting to server during token refresh: $e',
+        'code': 500
+      };
     }
+  }
 
   Future getProfile() async {
     var url = Uri.parse('${this.url}/api/v1/absensi/profile');
 
-    var response = await http.get(
-      url,
-      headers: headers,
-    );
+    var response = await http.get(url, headers: headers);
     var data = json.decode(response.body);
     print(data);
-    if(data['status'] == true && data['data'] != null){
+    if (data['status'] == true && data['data'] != null) {
       appController.userProfile.changeVal(data['data']);
     }
-    
 
     return data;
   }
 
   Future updateProfile(Map<String, String> dataUser) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/profile/${appController.userProfile.state['id']}');
+    var url = Uri.parse(
+      '${this.url}/api/v1/absensi/profile/${appController.userProfile.state['id']}',
+    );
 
     // Ensure all values are strings for the API request
     Map<String, String> raw = {};
@@ -112,131 +190,134 @@ class Api {
     try {
       var response = await http.put(url, headers: headers, body: raw);
       var data = json.decode(response.body);
-      
+
       if (data['status'] == true && data['data'] != null) {
         // Update the local user profile data
         appController.userProfile.changeVal(data['data']);
       }
-      
+
       print('Update Profile Response: $data');
       print('Update Profile Request: $raw');
-      
+
       return data;
     } catch (e) {
       print('Error updating profile: $e');
-      return {
-        'status': false,
-        'message': 'Error connecting to server: $e',
-      };
+      return {'status': false, 'message': 'Error connecting to server: $e'};
     }
   }
 
-  Future changePass(
-    String oldPass,
-    String newPass,
-    String confPass
-  ) async {
+  Future changePass(String oldPass, String newPass, String confPass) async {
     try {
       var url = Uri.parse('${this.url}/api/v1/absensi/reset-password');
 
       var raw = {
         'old_password': oldPass,
         'new_password': newPass,
-        'confirm_password': confPass
+        'confirm_password': confPass,
       };
 
-      var response = await http.post(url,
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': 'Bearer ${user.read('token')}',
-          },
-          body: raw);
+      var response = await http.post(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ${user.read('token')}',
+        },
+        body: raw,
+      );
       var data = json.decode(response.body);
-      
+
       if (data['status'] == true) {
         // Update stored password if successful
         user.write('pass', newPass);
       }
-      
+
       print('Change Password Response: $data');
       print('Change Password Request: $raw');
 
       return data;
     } catch (e) {
       print('Error changing password: $e');
-      return {
-        'status': false,
-        'message': 'Error connecting to server: $e',
-      };
+      return {'status': false, 'message': 'Error connecting to server: $e'};
     }
   }
 
-  Future getAbsensi(String category, String startDate, String endDate, {Map<String, dynamic>? additionalFilters}) async {
-    var urlString = '${this.url}/api/v1/absensi/attendance?category=$category';
-    
-    // Perbaikan kondisi untuk memeriksa startDate dan endDate
-    if(startDate.isNotEmpty && endDate.isNotEmpty){
-      urlString += '&startDate=$startDate&endDate=$endDate';
-    }
-    
-    // Tambahkan parameter tambahan jika tersedia
-    if (additionalFilters != null && additionalFilters.isNotEmpty) {
-      additionalFilters.forEach((key, value) {
-        if (value != null && value.toString().isNotEmpty) {
-          urlString += '&$key=$value';
-        }
-      });
-    }
-    
-    var url = Uri.parse(urlString);
-    print('API URL: $urlString'); // Tambahkan log untuk debugging
-    
-    try {
-      // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http.get(
-        url,
-        headers: headers,
-      ).timeout(const Duration(seconds: 15), onTimeout: () {
-        throw TimeoutException('The connection has timed out, please try again!');
-      });
-      
-      var data = json.decode(response.body);
-      print('Get Attendance Response: $data');
-      return data;
-    } catch (e) {
-      print('Error getting attendance data: $e');
-      return {
-        'status': false,
-        'message': e is TimeoutException ? e.message : 'Error connecting to server: $e',
-      };
-    }
-  }
+  Future getAbsensi(
+    String category,
+    String startDate,
+    String endDate, {
+    Map<String, dynamic>? additionalFilters,
+  }) async {
+    return handleTokenRefreshAndRetry(() async {
+      var urlString = '${this.url}/api/v1/absensi/attendance?category=$category';
+
+      // Perbaikan kondisi untuk memeriksa startDate dan endDate
+      if (startDate.isNotEmpty && endDate.isNotEmpty) {
+        urlString += '&startDate=$startDate&endDate=$endDate';
+      }
+
+      // Tambahkan parameter tambahan jika tersedia
+      if (additionalFilters != null && additionalFilters.isNotEmpty) {
+        additionalFilters.forEach((key, value) {
+          if (value != null && value.toString().isNotEmpty) {
+            urlString += '&$key=$value';
+          }
+        });
+      }
+
+      var url = Uri.parse(urlString);
+      print('API URL: $urlString'); // Tambahkan log untuk debugging
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Attendance Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting attendance data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });  // This is the correct closing brace for handleTokenRefreshAndRetry
+  }  // This is the correct closing brace for getAbsensi
 
   Future addAbsensi(Map<String, String> dataAbsen) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/attendance');
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/attendance');
 
-    // Ensure all values are strings for the API request
-    Map<String, String> raw = {};
-    dataAbsen.forEach((key, value) {
-      raw[key] = value.toString();
+      // Ensure all values are strings for the API request
+      Map<String, String> raw = {};
+      dataAbsen.forEach((key, value) {
+        raw[key] = value.toString();
+      });
+
+      try {
+        var response = await http.post(url, headers: headers, body: raw);
+        var data = json.decode(response.body);
+
+        print('Add Attendance Response: $data');
+        print('Add Attendance Request: $raw');
+
+        return data;
+      } catch (e) {
+        print('Error adding attendance: $e');
+        return {'status': false, 'message': 'Error connecting to server: $e'};
+      }
     });
-
-    try {
-      var response = await http.post(url, headers: headers, body: raw);
-      var data = json.decode(response.body);
-
-      
-      print('Update Profile Response: $data');
-      print('Update Profile Request: $raw');
-      
-      return data;
-    } catch (e) {
-      print('Error updating profile: $e');
-      return {
-        'status': false,
-        'message': 'Error connecting to server: $e',
-      };
-    }
   }
 
   Future delAbsensi(String id) async {
@@ -244,53 +325,71 @@ class Api {
 
     try {
       // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http.delete(url, headers: headers)
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        throw TimeoutException('The connection has timed out, please try again!');
-      });
-      
+      var response = await http
+          .delete(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
+
       var data = json.decode(response.body);
       print('Delete Attendance Response: $data');
-      
+
       return data;
     } catch (e) {
       print('Error deleting attendance: $e');
       return {
         'status': false,
-        'message': e is TimeoutException ? e.message : 'Error connecting to server: $e',
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
       };
     }
   }
 
   Future getLembur({String startDate = '', String endDate = ''}) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/lembur');
-    if(startDate != '' && endDate != ''){
-      url = Uri.parse('${this.url}/api/v1/absensi/lembur?startDate=$startDate&endDate=$endDate');
-    } else if(startDate != ''){
-      url = Uri.parse('${this.url}/api/v1/absensi/lembur?startDate=$startDate');
-    } else if(endDate != ''){
-      url = Uri.parse('${this.url}/api/v1/absensi/lembur?endDate=$endDate');
-    }
-    
-    try {
-      // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http.get(
-        url,
-        headers: headers,
-      ).timeout(const Duration(seconds: 15), onTimeout: () {
-        throw TimeoutException('The connection has timed out, please try again!');
-      });
-      
-      var data = json.decode(response.body);
-      print('Get Attendance Response: $data');
-      return data;
-    } catch (e) {
-      print('Error getting attendance data: $e');
-      return {
-        'status': false,
-        'message': e is TimeoutException ? e.message : 'Error connecting to server: $e',
-      };
-    }
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/lembur');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/lembur?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/lembur?startDate=$startDate');
+      } else if (endDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/lembur?endDate=$endDate');
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Attendance Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting attendance data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
   }
 
   Future addLembur(Map<String, String> dataLembur) async {
@@ -306,17 +405,13 @@ class Api {
       var response = await http.post(url, headers: headers, body: raw);
       var data = json.decode(response.body);
 
-      
       print('Add Lembur Response: $data');
       print('Add Lembur Request: $raw');
-      
+
       return data;
     } catch (e) {
       print('Error updating profile: $e');
-      return {
-        'status': false,
-        'message': 'Error connecting to server: $e',
-      };
+      return {'status': false, 'message': 'Error connecting to server: $e'};
     }
   }
 
@@ -333,17 +428,13 @@ class Api {
       var response = await http.put(url, headers: headers, body: raw);
       var data = json.decode(response.body);
 
-      
       print('Add Lembur Response: $data');
       print('Add Lembur Request: $raw');
-      
+
       return data;
     } catch (e) {
       print('Error updating profile: $e');
-      return {
-        'status': false,
-        'message': 'Error connecting to server: $e',
-      };
+      return {'status': false, 'message': 'Error connecting to server: $e'};
     }
   }
 
@@ -352,70 +443,108 @@ class Api {
 
     try {
       // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http.delete(url, headers: headers)
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        throw TimeoutException('The connection has timed out, please try again!');
-      });
-      
+      var response = await http
+          .delete(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
+
       var data = json.decode(response.body);
       print('Delete Attendance Response: $data');
-      
+
       return data;
     } catch (e) {
       print('Error deleting attendance: $e');
       return {
         'status': false,
-        'message': e is TimeoutException ? e.message : 'Error connecting to server: $e',
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
       };
     }
   }
 
   Future getTeam() async {
     var url = Uri.parse('${this.url}/api/v1/absensi/team');
-    
+
     try {
       // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http.get(
-        url,
-        headers: headers,
-      ).timeout(const Duration(seconds: 15), onTimeout: () {
-        throw TimeoutException('The connection has timed out, please try again!');
-      });
-      
+      var response = await http
+          .get(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
+
       var data = json.decode(response.body);
-      print('Get Team Response: $data'); // Updated log message to be more specific
+      print(
+        'Get Team Response: $data',
+      ); // Updated log message to be more specific
       return data;
     } catch (e) {
-      print('Error getting team data: $e'); // Updated error message to be more specific
+      print(
+        'Error getting team data: $e',
+      ); // Updated error message to be more specific
       return {
         'status': false,
-        'message': e is TimeoutException ? e.message : 'Error connecting to server: $e',
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
       };
     }
   }
 
-}
+  Future getTeamBirthday() async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/team/birthday');
 
-class MasterApi {
-  final url = 'https://dev-api-smartkidz.optimasolution.co.id';
-  //url prod
-  // final url = 'https://dev-api-smartkidz.optimasolution.co.id';
-  // final urlimg = 'https://dev-smartkidz.optimasolution.co.id';
-  //  final url = 'http://192.168.1.23:8020/';
+    try {
+      // Add timeout to the HTTP request to prevent long waiting times
+      var response = await http
+          .get(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
 
-  Map<String, String> headers = {
-    'Authorization': 'Bearer ${user.read('token')}',
-    'Accept': 'application/json'
-  };
+      var data = json.decode(response.body);
+      print(
+        'Get Team Response: $data',
+      ); // Updated log message to be more specific
+      return data;
+    } catch (e) {
+      print(
+        'Error getting team data: $e',
+      ); // Updated error message to be more specific
+      return {
+        'status': false,
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
+      };
+    }
+  }
 
-  Future category() async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/category');
-     Map<String, String> header = {
+  Future approvalLemburByHRD(String id, Map<String, String> body) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/approval-hrd/$id');
+    Map<String, String> header = {
       'Authorization': 'Bearer ${user.read('token')}',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
     };
 
-    var response = await http.get(url, headers: header);
+    var response = await http.put(url, headers: header, body: body);
     var data = json.decode(response.body);
     print('Category Response: $data');
     // var data = {
@@ -490,11 +619,154 @@ class MasterApi {
     return data;
   }
 
+  Future approvalLemburBySupervisor(String id, Map<String, String> body) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/approval-supervisor/$id');
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body:body );
+    var data = json.decode(response.body);
+    print('Category Response: $data');
+    // var data = {
+    //   "status": true,
+    //   "message": "Success",
+    //   "code": 200,
+    //   "data": [
+    //     {
+    //         "id": 1,
+    //         "code": "SKC0001",
+    //         "name": "Smartkidz Graha Raya"
+    //     },
+    //     {
+    //         "id": 2,
+    //         "code": "SKC0002",
+    //         "name": "Smartkidz Kelapa Dua"
+    //     },
+    //     {
+    //         "id": 3,
+    //         "code": "SKC0003",
+    //         "name": "Smartkidz Spatan"
+    //     },
+    //     {
+    //         "id": 4,
+    //         "code": "SKC0004",
+    //         "name": "Smartkidz Ceger Raya"
+    //     },
+    //     {
+    //         "id": 5,
+    //         "code": "SKC0005",
+    //         "name": "Smartkidz Ahmad Yani Tangerang"
+    //     },
+    //     {
+    //         "id": 6,
+    //         "code": "SKC0006",
+    //         "name": "Smartkidz Grand Batavia"
+    //     },
+    //     {
+    //         "id": 7,
+    //         "code": "SKC0007",
+    //         "name": "Smartkidz Poris Gaga"
+    //     },
+    //     {
+    //         "id": 8,
+    //         "code": "SKC0008",
+    //         "name": "Smartkidz Cileduk"
+    //     },
+    //     {
+    //         "id": 9,
+    //         "code": "SKC0009",
+    //         "name": "Smartkidz Permata Regency"
+    //     },
+    //     {
+    //         "id": 10,
+    //         "code": "SKC0010",
+    //         "name": "Smartkidz Cipondoh"
+    //     },
+    //     {
+    //         "id": 11,
+    //         "code": "SKC0011",
+    //         "name": "Smartkidz Karawaci"
+    //     },
+    //     {
+    //         "id": 12,
+    //         "code": "SKC0012",
+    //         "name": "Smartkidz Semanan"
+    //     }
+    //   ]
+    // };
+    // print(data);
+    print(data);
+    return data;
+  }
+}
+
+class MasterApi {
+  final url = 'https://dev-api-smartkidz.optimasolution.co.id';
+  //url prod
+  // final url = 'https://dev-api-smartkidz.optimasolution.co.id';
+  // final urlimg = 'https://dev-smartkidz.optimasolution.co.id';
+  //  final url = 'http://192.168.1.23:8020/';
+
+  Map<String, String> headers = {
+    'Authorization': 'Bearer ${user.read('token')}',
+    'Accept': 'application/json',
+  };
+
+  Future category() async {
+    try {
+      var url = Uri.parse('${this.url}/api/v1/absensi/category');
+      Map<String, String> header = {
+        'Authorization': 'Bearer ${user.read('token')}',
+        'Accept': 'application/json',
+      };
+
+      var response = await http.get(url, headers: header);
+      var data = json.decode(response.body);
+      print('Category Response: $data');
+      
+      // Check if token is invalid
+      if (data['status'] == false && 
+          data['message'] != null && 
+          data['message'].toString().contains('Invalid Token')) {
+        
+        print('Token invalid, attempting to refresh...');
+        
+        // Try to refresh the token
+        var api = Api();
+        var refreshResult = await api.tokenRefresh();
+        
+        if (refreshResult['status'] == true) {
+          print('Token refreshed successfully, retrying category request');
+          // Retry the category request with new token
+          header = {
+            'Authorization': 'Bearer ${user.read('token')}',
+            'Accept': 'application/json',
+          };
+          response = await http.get(url, headers: header);
+          data = json.decode(response.body);
+        } else {
+          print('Token refresh failed: ${refreshResult['message']}');
+        }
+      }
+      
+      print(data);
+      return data;
+    } catch (e) {
+      print('Error in category: $e');
+      return {
+        'status': false,
+        'message': 'Error fetching categories: $e',
+      };
+    }
+  }
+
   Future jenisLembur() async {
     var url = Uri.parse('${this.url}/api/v1/absensi/jenis-lembur');
-     Map<String, String> header = {
+    Map<String, String> header = {
       'Authorization': 'Bearer ${user.read('token')}',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
     };
 
     var response = await http.get(url, headers: header);
@@ -574,9 +846,9 @@ class MasterApi {
 
   Future approvalLembur() async {
     var url = Uri.parse('${this.url}/api/v1/absensi/approval-lembur');
-     Map<String, String> header = {
+    Map<String, String> header = {
       'Authorization': 'Bearer ${user.read('token')}',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
     };
 
     var response = await http.get(url, headers: header);
@@ -654,6 +926,71 @@ class MasterApi {
     return data;
   }
 
+  Future divisi() async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/divisi');
 
+    try {
+      // Add timeout to the HTTP request to prevent long waiting times
+      var response = await http
+          .get(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
 
+      var data = json.decode(response.body);
+      print(
+        'Get Team Response: $data',
+      ); // Updated log message to be more specific
+      return data;
+    } catch (e) {
+      print(
+        'Error getting team data: $e',
+      ); // Updated error message to be more specific
+      return {
+        'status': false,
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
+      };
+    }
+  }
+
+  Future jabatan() async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/jabatan');
+
+    try {
+      // Add timeout to the HTTP request to prevent long waiting times
+      var response = await http
+          .get(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
+
+      var data = json.decode(response.body);
+      print(
+        'Get Team Response: $data',
+      ); // Updated log message to be more specific
+      return data;
+    } catch (e) {
+      print(
+        'Error getting team data: $e',
+      ); // Updated error message to be more specific
+      return {
+        'status': false,
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
+      };
+    }
+  }
 }

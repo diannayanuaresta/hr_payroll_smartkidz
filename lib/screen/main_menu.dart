@@ -3,16 +3,21 @@ import 'dart:io';
 import 'dart:math' as Math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
 import 'package:hr_payroll_smartkidz/components/color_app.dart';
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/attend_controller.dart';
+import 'package:hr_payroll_smartkidz/controller/letter_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/main_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/overtime_controller.dart';
+import 'package:hr_payroll_smartkidz/controller/tim_controller.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/account_list.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/approval_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/attend_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/document_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/overtime_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/tim_list.dart';
+import 'package:hr_payroll_smartkidz/screen/staff/letter_list.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:intl/intl.dart';
@@ -38,7 +43,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   String? _base64Image;
   Position? _currentPosition;
   final TextEditingController _descriptionController = TextEditingController();
-  
+
   @override
   void initState() {
     super.initState();
@@ -47,25 +52,25 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     // Initialize camera
     _initializeCamera();
   }
-  
+
   @override
   void dispose() {
     _cameraController?.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _initializeCamera() async {
     try {
       // Get available cameras
       _cameras = await availableCameras();
       print('Available cameras: ${_cameras?.length ?? 0}');
-      
+
       if (_cameras == null || _cameras!.isEmpty) {
         print('No cameras available');
         return;
       }
-      
+
       // Find front camera
       CameraDescription? frontCamera;
       for (var camera in _cameras!) {
@@ -75,14 +80,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           break;
         }
       }
-      
+
       // If front camera not found, use the first available camera
       final cameraToUse = frontCamera ?? _cameras!.first;
-      print('Using camera: ${cameraToUse.name}, direction: ${cameraToUse.lensDirection}');
-      
+      print(
+        'Using camera: ${cameraToUse.name}, direction: ${cameraToUse.lensDirection}',
+      );
+
       // Dispose of previous controller if it exists
       await _cameraController?.dispose();
-      
+
       // Create new controller
       _cameraController = CameraController(
         cameraToUse,
@@ -90,10 +97,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
-      
+
       // Initialize the controller
       await _cameraController!.initialize();
-      
+
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
@@ -109,7 +116,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       }
     }
   }
-  
+
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -135,29 +142,33 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         return;
       }
     }
-    
+
     if (permission == LocationPermission.deniedForever) {
       // Permissions are denied forever
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Location permissions are permanently denied, we cannot request permissions.'),
+          content: Text(
+            'Location permissions are permanently denied, we cannot request permissions.',
+          ),
         ),
       );
       return;
-    } 
+    }
 
     // When we reach here, permissions are granted and we can get the location
     try {
       _currentPosition = await Geolocator.getCurrentPosition();
-      print('Current location: ${_currentPosition?.latitude}, ${_currentPosition?.longitude}');
+      print(
+        'Current location: ${_currentPosition?.latitude}, ${_currentPosition?.longitude}',
+      );
     } catch (e) {
       print('Error getting location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting location: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return ScreenTypeLayout.builder(
@@ -167,7 +178,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       watch: (context) => _buildScaffold(context, isWatch: true),
     );
   }
-  
+
   // Show date filter dialog for attendance screen
   void _showDateFilterDialog(BuildContext context) {
     showDialog(
@@ -180,9 +191,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             // Start Date
             ListTile(
               title: const Text('Start Date'),
-              subtitle: Text(_startDate == null 
-                ? 'Not set' 
-                : DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_startDate!)),
+              subtitle: Text(
+                _startDate == null
+                    ? 'Not set'
+                    : DateFormat(
+                        'EEEE, d MMMM yyyy',
+                        'id_ID',
+                      ).format(_startDate!),
+              ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
                 final DateTime? picked = await showDatePicker(
@@ -198,13 +214,18 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 }
               },
             ),
-            
+
             // End Date
             ListTile(
               title: const Text('End Date'),
-              subtitle: Text(_endDate == null 
-                ? 'Not set' 
-                : DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_endDate!)),
+              subtitle: Text(
+                _endDate == null
+                    ? 'Not set'
+                    : DateFormat(
+                        'EEEE, d MMMM yyyy',
+                        'id_ID',
+                      ).format(_endDate!),
+              ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
                 final DateTime? picked = await showDatePicker(
@@ -230,11 +251,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 _endDate = null;
               });
               Navigator.pop(context);
-              
+
               // Store date filter in app controller for AttendanceScreen to use
               appController.tglAwalFilter.changeVal('');
               appController.tglAkhirFilter.changeVal('');
-              
+
               // Notify AttendanceScreen or OvertimeScreen to reload data
               if (mainController.currentIndexMenu.state == 0) {
                 // Trigger reload in AttendanceScreen
@@ -255,20 +276,24 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              
+
               // Store date filter in app controller for AttendanceScreen to use
               if (_startDate != null) {
-                appController.tglAwalFilter.changeVal(DateFormat('yyyy-MM-dd').format(_startDate!));
+                appController.tglAwalFilter.changeVal(
+                  DateFormat('yyyy-MM-dd').format(_startDate!),
+                );
               } else {
                 appController.tglAwalFilter.changeVal('');
               }
-              
+
               if (_endDate != null) {
-                appController.tglAkhirFilter.changeVal(DateFormat('yyyy-MM-dd').format(_endDate!));
+                appController.tglAkhirFilter.changeVal(
+                  DateFormat('yyyy-MM-dd').format(_endDate!),
+                );
               } else {
                 appController.tglAkhirFilter.changeVal('');
               }
-              
+
               // Notify AttendanceScreen or OvertimeScreen to reload data
               if (mainController.currentIndexMenu.state == 0) {
                 // Trigger reload in AttendanceScreen
@@ -284,7 +309,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       ),
     );
   }
-  
+
   // Show attendance form with camera and location
   void _showAttendanceForm(BuildContext context) async {
     // Reset state
@@ -293,24 +318,28 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       _base64Image = null;
       _descriptionController.clear();
     });
-    
+
     // Get current location
     await _getCurrentLocation();
-    
+
     // Check if camera is initialized, if not try to initialize it again
     if (!_isCameraInitialized) {
       print('Camera not initialized, attempting to initialize again...');
       await _initializeCamera();
-      
+
       // If still not initialized, show error and return
       if (!_isCameraInitialized) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Camera initialization failed. Please restart the app and try again.')),
+          const SnackBar(
+            content: Text(
+              'Camera initialization failed. Please restart the app and try again.',
+            ),
+          ),
         );
         return;
       }
     }
-    
+
     // Ensure camera controller is valid
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       print('Camera controller is null or not initialized');
@@ -319,26 +348,28 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       );
       return;
     }
-    
+
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to get location. Please try again.')),
+        const SnackBar(
+          content: Text('Failed to get location. Please try again.'),
+        ),
       );
       return;
     }
-    
+
     // Get the selected category
-    final categories = appController.categoryListMap.isNotEmpty 
-        ? appController.categoryListMap 
+    final categories = appController.categoryListMap.isNotEmpty
+        ? appController.categoryListMap
         : [
             {'id': 1, 'name': 'Check In'},
             {'id': 2, 'name': 'Check Out'},
-            {'id': 3, 'name': 'Cuti'}
+            {'id': 3, 'name': 'Cuti'},
           ];
-    
+
     final selectedIndex = attendController.currentIndexAttend.state;
     final selectedCategory = categories[selectedIndex]['id'];
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -350,12 +381,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Camera preview or captured image
-                  if (_base64Image == null) ...[  
+                  if (_base64Image == null) ...[
                     Container(
                       height: 300,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.black, // Keeping black for camera background as it's standard
+                        color: Colors
+                            .black, // Keeping black for camera background as it's standard
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: ClipRRect(
@@ -379,43 +411,54 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                               setDialogState(() {
                                 _isProcessing = true;
                               });
-                              
+
                               try {
                                 // Check if camera controller is still valid
-                                if (_cameraController == null || !_cameraController!.value.isInitialized) {
+                                if (_cameraController == null ||
+                                    !_cameraController!.value.isInitialized) {
                                   throw Exception('Camera is not ready');
                                 }
-                                
+
                                 // Capture image
                                 print('Taking picture...');
-                                final XFile image = await _cameraController!.takePicture();
+                                final XFile image = await _cameraController!
+                                    .takePicture();
                                 print('Picture taken: ${image.path}');
                                 _imagePath = image.path;
-                                
+
                                 // Convert to base64
                                 print('Converting image to base64...');
-                                final bytes = await File(_imagePath!).readAsBytes();
+                                final bytes = await File(
+                                  _imagePath!,
+                                ).readAsBytes();
                                 print('Image size: ${bytes.length} bytes');
                                 final base64String = base64Encode(bytes);
                                 // Add the data URI prefix as expected by the API and display code
-                                _base64Image = 'data:image/png;base64,$base64String';
-                                
+                                _base64Image =
+                                    'data:image/png;base64,$base64String';
+
                                 // Debug log to verify conversion
-                                print('Image converted to base64 with prefix. Length: ${_base64Image!.length}');
-                                print('Base64 sample: ${_base64Image!.substring(0, Math.min(50, _base64Image!.length))}...');
-                                
+                                print(
+                                  'Image converted to base64 with prefix. Length: ${_base64Image!.length}',
+                                );
+                                print(
+                                  'Base64 sample: ${_base64Image!.substring(0, Math.min(50, _base64Image!.length))}...',
+                                );
+
                                 setDialogState(() {
                                   _isProcessing = false;
                                 });
                               } catch (e) {
                                 print('Error capturing image: $e');
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error capturing image: $e')),
+                                  SnackBar(
+                                    content: Text('Error capturing image: $e'),
+                                  ),
                                 );
                                 setDialogState(() {
                                   _isProcessing = false;
                                 });
-                                
+
                                 // Try to reinitialize camera if there was an error
                                 _initializeCamera();
                               }
@@ -424,11 +467,17 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
-                          : const Text('Capture Photo', style: TextStyle(color: Colors.white)),
+                          : const Text(
+                              'Capture Photo',
+                              style: TextStyle(color: Colors.white),
+                            ),
                     ),
-                  ] else ...[  
+                  ] else ...[
                     // Show captured image
                     Container(
                       height: 300,
@@ -439,10 +488,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          File(_imagePath!),
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image.file(File(_imagePath!), fit: BoxFit.cover),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -456,9 +502,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       child: const Text('Retake Photo'),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Location information
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -469,16 +515,23 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Location:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Location:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
-                        Text('Latitude: ${_currentPosition?.latitude ?? 'Unknown'}'),
-                        Text('Longitude: ${_currentPosition?.longitude ?? 'Unknown'}'),
+                        Text(
+                          'Latitude: ${_currentPosition?.latitude ?? 'Unknown'}',
+                        ),
+                        Text(
+                          'Longitude: ${_currentPosition?.longitude ?? 'Unknown'}',
+                        ),
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Description field
                   TextField(
                     controller: _descriptionController,
@@ -509,7 +562,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                         setDialogState(() {
                           _isProcessing = true;
                         });
-                        
+
                         try {
                           // Prepare data for API
                           final Map<String, String> attendanceData = {
@@ -519,26 +572,38 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                             'photo': _base64Image!,
                             'description': _descriptionController.text,
                           };
-                          
+
                           // Send data to API
-                          final response = await Api().addAbsensi(attendanceData);
-                          
+                          final response = await Api().addAbsensi(
+                            attendanceData,
+                          );
+
                           setDialogState(() {
                             _isProcessing = false;
                           });
-                          
+
                           Navigator.pop(context); // Close dialog
-                          
+
                           if (response['status'] == true) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Attendance recorded successfully')),
+                              const SnackBar(
+                                content: Text(
+                                  'Attendance recorded successfully',
+                                ),
+                              ),
                             );
-                            
+
                             // Refresh attendance list
-                            attendController.reloadAttendanceData.changeVal('true');
+                            attendController.reloadAttendanceData.changeVal(
+                              'true',
+                            );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to record attendance: ${response['message'] ?? "Unknown error"}')),
+                              SnackBar(
+                                content: Text(
+                                  'Failed to record attendance: ${response['message'] ?? "Unknown error"}',
+                                ),
+                              ),
                             );
                           }
                         } catch (e) {
@@ -547,7 +612,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                             _isProcessing = false;
                           });
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error submitting attendance: $e')),
+                            SnackBar(
+                              content: Text('Error submitting attendance: $e'),
+                            ),
                           );
                         }
                       },
@@ -555,9 +622,15 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
-                    : const Text('Submit', style: TextStyle(color: Colors.white)),
+                    : const Text(
+                        'Submit',
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
             ],
           );
@@ -572,8 +645,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     bool isDesktop = false,
     bool isWatch = false,
   }) {
-    final horizontalPadding = isTablet || isDesktop ? 32.0 : 16.0;
-    final avatarRadius = isTablet || isDesktop ? 28.0 : 20.0;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -584,34 +655,47 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         title: BlocBuilder(
           bloc: mainController.currentIndexMenu,
           builder: (context, state) {
-            // Display title based on selected menu
             switch (mainController.currentIndexMenu.state) {
               case 0:
-                return const Text('Presensi', style: TextStyle(color: Colors.white));
+                return const Text(
+                  'Presensi',
+                  style: TextStyle(color: Colors.white),
+                );
               case 1:
                 return const Text('Tim', style: TextStyle(color: Colors.white));
               case 2:
-                return const Text('Overtime', style: TextStyle(color: Colors.white));
+                return const Text(
+                  'Letter',
+                  style: TextStyle(color: Colors.white),
+                );
               case 3:
-                return const Text('Surat', style: TextStyle(color: Colors.white));
-              case 4:
-                return const Text('Settings', style: TextStyle(color: Colors.white));
+                return const Text(
+                  'Settings',
+                  style: TextStyle(color: Colors.white),
+                );
               default:
-                return const Text('Presensi', style: TextStyle(color: Colors.white));
+                return const Text(
+                  'Letter',
+                  style: TextStyle(color: Colors.white),
+                );
             }
           },
         ),
         leading: BlocBuilder(
           bloc: mainController.currentIndexMenu,
           builder: (context, state) {
-            // Show filter button when on Presensi screen (index 0) or Overtime screen (index 2)
-            if (mainController.currentIndexMenu.state == 0 || mainController.currentIndexMenu.state == 2) {
+            // Show filter button when on Presensi screen (index 0) or Letter screen (index 2)
+            if (mainController.currentIndexMenu.state == 0 ||
+                mainController.currentIndexMenu.state == 2) {
               return IconButton(
                 icon: const Icon(Icons.filter_alt, color: Colors.white),
                 onPressed: () => _showDateFilterDialog(context),
               );
             }
-            return const SizedBox.shrink(); // Empty widget when not on Presensi or Overtime screen
+            // Trigger reload in LetterScreen
+            // Trigger reload in LetterScreen
+            letterController.reloadLetterData.changeVal('true');
+            return const SizedBox.shrink(); // Empty widget when not on Presensi or Letter screen
           },
         ),
       ),
@@ -624,10 +708,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             case 1:
               return const TeamListScreen();
             case 2:
-              return const OvertimeScreen();
+              return const LetterScreen();
             case 3:
-              return const DocumentList();
-            case 4:
               return const MyAccountPage();
             default:
               return const AttendanceScreen();
@@ -642,7 +724,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             return FloatingActionButton(
               backgroundColor: Theme.of(context).primaryColor,
               onPressed: () => _showAttendanceForm(context),
-              child: Icon(Icons.camera_alt, color: Theme.of(context).colorScheme.onPrimary),
+              child: Icon(
+                Icons.camera_alt,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
             );
           }
           return const SizedBox.shrink(); // No FAB for other menu items
@@ -651,61 +736,103 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       bottomNavigationBar: BlocBuilder(
         bloc: mainController.currentIndexMenu,
         builder: (context, state) {
+          // Buat list item bottom navigation bar
+          final List<BottomNavigationBarItem> navItems = [
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.camera_front_rounded,
+                color: mainController.currentIndexMenu.state == 0
+                    ? Theme.of(context).colorScheme.tertiary
+                    : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
+              ),
+              label: 'Presensi',
+            ),
+            BottomNavigationBarItem(
+              backgroundColor: Theme.of(context).primaryColor,
+              icon: Stack(
+                children: [
+                  Icon(
+                    Icons.people_rounded,
+                    color: mainController.currentIndexMenu.state == 1
+                        ? Theme.of(context).colorScheme.tertiary
+                        : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
+                  ),
+                  // Tambahkan indikator ulang tahun jika ada anggota tim yang berulang tahun hari ini
+                  BlocBuilder<CustomBloc, dynamic>(
+                    bloc: timController.hasBirthdayToday,
+                    builder: (context, hasBirthday) {
+                      if (hasBirthday == true) {
+                        return Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: BoxConstraints(minWidth: 8, minHeight: 8),
+                          ),
+                        );
+                      }
+                      return SizedBox.shrink();
+                    },
+                  ),
+                ],
+              ),
+              label: 'Tim',
+            ),
+            // BottomNavigationBarItem(
+            //   icon: Icon(
+            //     Icons.access_time,
+            //     color: mainController.currentIndexMenu.state == 2
+            //         ? Theme.of(context).colorScheme.tertiary
+            //         : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
+            //   ),
+            //   label: 'Overtime',
+            // ),
+            // Hapus kondisi if untuk menu Surat
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.mail_outline, // Changed icon to be more appropriate for Letter
+                color: mainController.currentIndexMenu.state == 2
+                    ? Theme.of(context).colorScheme.tertiary
+                    : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
+              ),
+              label: 'Letter',
+            ),
+             BottomNavigationBarItem(
+              icon: Icon(
+                Icons.settings, // Changed icon to be more appropriate for Letter
+                color: mainController.currentIndexMenu.state == 2
+                    ? Theme.of(context).colorScheme.tertiary
+                    : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
+              ),
+              label: 'Account',
+            ),
+          ];
+
+          // Pastikan currentIndex valid untuk jumlah item yang ada
+          int currentIndex = mainController.currentIndexMenu.state;
+
+          // Jika currentIndex melebihi jumlah item yang ada, sesuaikan
+          if (currentIndex >= navItems.length) {
+            currentIndex = navItems.length - 1;
+          }
+
           return BottomNavigationBar(
             backgroundColor: Theme.of(context).primaryColor,
             selectedItemColor: Theme.of(context).colorScheme.tertiary,
-            unselectedItemColor: Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
-            type: BottomNavigationBarType.fixed, // Add this to support more than 4 items
-            items: [
-              BottomNavigationBarItem(
-                icon: Icon(
-                  Icons.camera_front_rounded,
-                  color: mainController.currentIndexMenu.state == 0
-                      ? Theme.of(context).colorScheme.tertiary
-                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
-                ),
-                label: 'Presensi',
-              ),
-              BottomNavigationBarItem(
-                backgroundColor: Theme.of(context).primaryColor,
-                icon: Icon(
-                  Icons.people_rounded,
-                  color: mainController.currentIndexMenu.state == 1
-                      ? Theme.of(context).colorScheme.tertiary
-                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
-                ),
-                label: 'Tim',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(
-                  Icons.access_time,
-                  color: mainController.currentIndexMenu.state == 2
-                      ? Theme.of(context).colorScheme.tertiary
-                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
-                ),
-                label: 'Overtime',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(
-                  Icons.messenger_rounded,
-                  color: mainController.currentIndexMenu.state == 3
-                      ? Theme.of(context).colorScheme.tertiary
-                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
-                ),
-                label: 'Surat',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(
-                  Icons.settings,
-                  color: mainController.currentIndexMenu.state == 4
-                      ? Theme.of(context).colorScheme.tertiary
-                      : Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
-                ),
-                label: 'Settings',
-              ),
-            ],
-            currentIndex: mainController.currentIndexMenu.state,
-            onTap: (index) => mainController.changeIndexMenu(index),
+            unselectedItemColor: Theme.of(
+              context,
+            ).colorScheme.onPrimary.withOpacity(0.5),
+            type: BottomNavigationBarType
+                .fixed, // Add this to support more than 4 items
+            items: navItems,
+            currentIndex: currentIndex,
+            onTap: (index) {
+               mainController.changeIndexMenu(index);
+            },
           );
         },
       ),

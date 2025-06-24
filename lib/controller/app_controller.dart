@@ -9,6 +9,7 @@ import 'package:get_storage/get_storage.dart';
 import '../bloc/custom_bloc.dart';
 
 class AppController{
+  
   GetStorage modeApplication = GetStorage();
   CustomBloc darkModeCB = CustomBloc();
   CustomBloc tglAwalFilter = CustomBloc();
@@ -21,14 +22,32 @@ class AppController{
   CustomBloc isDevelopmentModeEnable = CustomBloc();
   MapBloc userProfile = MapBloc();
   MapBloc userDetailProfile = MapBloc();
+  MapBloc userAccess = MapBloc();
 
   //latitude longitude
   CustomBloc latitudeCB = CustomBloc();
   CustomBloc longitudeCB = CustomBloc();
 
   //ListMapBloc
+  ListMapBloc approvalLemburLMB = ListMapBloc();
+  List<Map> approvalLemburListMap = [];
+
   ListMapBloc categoryLMB = ListMapBloc();
   List<Map> categoryListMap = [];
+  
+  // Letter categories
+  ListMapBloc letterCategoryLMB = ListMapBloc();
+  List<Map> letterCategoryListMap = [];
+  
+  //Master Data ListMapBloc
+  ListMapBloc jabatanLMB = ListMapBloc();
+  List<Map> jabatanListMap = [];
+  
+  ListMapBloc divisiLMB = ListMapBloc();
+  List<Map> divisiListMap = [];
+  
+  ListMapBloc jenisLemburLMB = ListMapBloc();
+  List<Map> jenisLemburListMap = [];
 
   //ListMapBloc
   ListMapBloc getAttendanceLMB = ListMapBloc();

@@ -65,14 +65,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> with AutomaticKeepA
           _endDate = null;
         }
         
+        // Check if categories are loaded, if not, load them
+        if (appController.categoryListMap.isEmpty) {
+          final masterApi = MasterApi();
+          final categoryResponse = await masterApi.category();
+          
+          if (categoryResponse['status'] == true && categoryResponse['data'] != null) {
+            appController.categoryLMB.removeAll();
+            appController.categoryLMB.addAll(categoryResponse['data']);
+            appController.categoryListMap = List<Map>.from(categoryResponse['data']);
+            print('Categories loaded from API: ${appController.categoryListMap}');
+          } else {
+            print('Failed to load categories: ${categoryResponse['message']}');
+            // Use default categories if API fails
+            appController.categoryListMap = [
+              {'id': 1, 'name': 'Check In'},
+              {'id': 2, 'name': 'Check Out'},
+              {'id': 3, 'name': 'Cuti'}
+            ];
+          }
+        }
+        
         // Get the selected category
-        final categories = appController.categoryListMap.isNotEmpty 
-            ? appController.categoryListMap 
-            : [
-                {'id': 1, 'name': 'Check In'},
-                {'id': 2, 'name': 'Check Out'},
-                {'id': 3, 'name': 'Cuti'}
-              ];
+        final categories = appController.categoryListMap;
         
         final selectedIndex = attendController.currentIndexAttend.state;
         if (selectedIndex >= categories.length) {
@@ -211,18 +226,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> with AutomaticKeepA
           const SizedBox(height: 16),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            child: BlocBuilder(
+            // In the _buildScaffold method, update the BlocBuilder section:
+            child: BlocBuilder<BlocBase<dynamic>, dynamic>(
               bloc: attendController.currentIndexAttend,
-              builder: (context, state) {
-                // Menggunakan data kategori dari appController.categoryListMap
-                final categories = appController.categoryListMap.isNotEmpty 
-                    ? appController.categoryListMap 
-                    : [
-                        {'id': 1, 'name': 'Check In'},
-                        {'id': 2, 'name': 'Check Out'},
-                        {'id': 3, 'name': 'Cuti'}
-                      ];
-                
+              builder: (BuildContext context, dynamic state) {
+                // Always use categories from appController, load if empty
+                if (appController.categoryListMap.isEmpty) {
+                // Show loading indicator while categories are being loaded
+                return const Center(child: CircularProgressIndicator());
+                }
+                final categories = appController.categoryListMap;
                 print('Categories in UI: $categories');
                 
                 return SingleChildScrollView(
@@ -236,9 +249,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with AutomaticKeepA
                           onTap: () {
                             attendController.changeIndexAttend(index);
                             // Memuat ulang data absensi saat kategori berubah
-setState(() {
-  _loadAttendanceData();
-});
+                            setState(() {
+                              _loadAttendanceData();
+                            });
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),

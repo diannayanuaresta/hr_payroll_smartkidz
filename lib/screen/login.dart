@@ -222,18 +222,54 @@ class _LoginScreenState extends State<LoginScreen> {
         appController.emailLogController.text = _usernameController.text;
         appController.passwordLogController.text = _passwordController.text;
         
+        // Save the user access/role data to the MapBloc
+        appController.userAccess.changeVal(response['data']);
+        print('User Access: ${appController.userAccess.state}');
+
         // Ambil data profil
         final profileResponse = await _api.getProfile();
         
-        // Ambil data kategori dari MasterApi
+        // Ambil data master dari MasterApi
         final masterApi = MasterApi();
-        final categoryResponse = await masterApi.category();
         
+        // Fetch and save category data
+        final categoryResponse = await masterApi.category();
         if (categoryResponse['status'] == true && categoryResponse['data'] != null) {
-          // Simpan data kategori ke dalam appController.categoryLMB
           appController.categoryLMB.removeAll();
           appController.categoryLMB.addAll(categoryResponse['data']);
           appController.categoryListMap = List<Map>.from(categoryResponse['data']);
+        }
+
+        // Fetch and save approval lembur data
+        final approvalLemburResponse = await masterApi.approvalLembur();
+        if (approvalLemburResponse['status'] == true && approvalLemburResponse['data'] != null) {
+          appController.approvalLemburLMB.removeAll();
+          appController.approvalLemburLMB.addAll(approvalLemburResponse['data']);
+          appController.approvalLemburListMap = List<Map>.from(approvalLemburResponse['data']); // Gunakan variabel yang benar
+        }
+        
+        // Fetch and save jabatan data
+        final jabatanResponse = await masterApi.jabatan();
+        if (jabatanResponse['status'] == true && jabatanResponse['data'] != null) {
+          appController.jabatanLMB.removeAll();
+          appController.jabatanLMB.addAll(jabatanResponse['data']);
+          appController.jabatanListMap = List<Map>.from(jabatanResponse['data']);
+        }
+        
+        // Fetch and save divisi data
+        final divisiResponse = await masterApi.divisi();
+        if (divisiResponse['status'] == true && divisiResponse['data'] != null) {
+          appController.divisiLMB.removeAll();
+          appController.divisiLMB.addAll(divisiResponse['data']);
+          appController.divisiListMap = List<Map>.from(divisiResponse['data']);
+        }
+        
+        // Fetch and save jenis lembur data
+        final jenisLemburResponse = await masterApi.jenisLembur();
+        if (jenisLemburResponse['status'] == true && jenisLemburResponse['data'] != null) {
+          appController.jenisLemburLMB.removeAll();
+          appController.jenisLemburLMB.addAll(jenisLemburResponse['data']);
+          appController.jenisLemburListMap = List<Map>.from(jenisLemburResponse['data']);
         }
         
         if (profileResponse['status'] == true && profileResponse['data'] != null) {

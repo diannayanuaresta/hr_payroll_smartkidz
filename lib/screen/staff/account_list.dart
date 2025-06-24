@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hr_payroll_smartkidz/controller/main_controller.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hr_payroll_smartkidz/bloc/theme_bloc.dart';
@@ -242,7 +243,7 @@ class _AccountFormState extends State<AccountForm> {
   }
 
   // Show logout confirmation dialog
-  void _showLogoutConfirmation(BuildContext context) {
+  void _showLogoutConfirmation(context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -269,12 +270,17 @@ class _AccountFormState extends State<AccountForm> {
                 
                 // Handle the response
                 if (response['status'] == true) {
-                  // On successful logout, immediately navigate to login screen
+                  // Reset main controller index
+                  mainController.changeIndexMenu(0);
+                  
+                  // On successful logout, navigate to login screen
                   // and remove all previous routes from the stack
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/login', 
-                    (route) => false
-                  );
+                  if (mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/login', 
+                      (route) => false
+                    );
+                  }
                 } else {
                   // Only update state and show error if logout failed
                   setState(() {
