@@ -85,6 +85,55 @@ class ColorApp {
   }
   
   // Get ThemeData for the app
+  // Add this method to get DatePickerThemeData
+  static DatePickerThemeData getDatePickerTheme(Brightness brightness) {
+    return DatePickerThemeData(
+      backgroundColor: getCardColor(brightness),
+      headerBackgroundColor: getPrimary(brightness),
+      headerForegroundColor: getTextOnPrimary(brightness),
+      dayForegroundColor: MaterialStateProperty.resolveWith<Color>(
+        (Set<MaterialState> states) {
+          if (states.contains(MaterialState.selected)) {
+            return getTextOnPrimary(brightness);
+          }
+          return getTextPrimary(brightness);
+        },
+      ),
+      dayBackgroundColor: MaterialStateProperty.resolveWith<Color>(
+        (Set<MaterialState> states) {
+          if (states.contains(MaterialState.selected)) {
+            return brightness == Brightness.dark ? darkTertiary : lightPrimary;
+          }
+          return Colors.transparent;
+        },
+      ),
+      todayForegroundColor: MaterialStateProperty.resolveWith<Color>(
+        (Set<MaterialState> states) {
+          return brightness == Brightness.dark ? darkTertiary : lightPrimary;
+        },
+      ),
+      todayBackgroundColor: MaterialStateProperty.resolveWith<Color>(
+        (Set<MaterialState> states) {
+          if (states.contains(MaterialState.selected)) {
+            return brightness == Brightness.dark ? darkTertiary : lightPrimary;
+          }
+          return Colors.transparent;
+        },
+      ),
+      confirmButtonStyle: ButtonStyle(
+        foregroundColor: MaterialStateProperty.all<Color>(
+          brightness == Brightness.dark ? darkTertiary : lightPrimary
+        ),
+      ),
+      cancelButtonStyle: ButtonStyle(
+        foregroundColor: MaterialStateProperty.all<Color>(
+          brightness == Brightness.dark ? darkTertiary : lightPrimary
+        ),
+      ),
+    );
+  }
+  
+  // Update the getTheme method to include datePickerTheme
   static ThemeData getTheme(BuildContext context, bool isDarkMode) {
     final brightness = isDarkMode ? Brightness.dark : Brightness.light;
     
@@ -93,6 +142,7 @@ class ColorApp {
       primaryColor: getPrimary(brightness),
       scaffoldBackgroundColor: getBackground(brightness),
       cardColor: getCardColor(brightness),
+      datePickerTheme: getDatePickerTheme(brightness), // Add this line
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: getPrimary(brightness),
@@ -103,8 +153,6 @@ class ColorApp {
         onTertiary: getTextOnPrimary(brightness),
         error: getError(brightness),
         onError: getTextOnPrimary(brightness),
-        background: getBackground(brightness),
-        onBackground: getTextPrimary(brightness),
         surface: getCardColor(brightness),
         onSurface: getTextPrimary(brightness),
       ),

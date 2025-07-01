@@ -18,22 +18,23 @@ class Api {
   // final url = 'https://dev-api-smartkidz.optimasolution.co.id';
   // final urlimg = 'https://dev-smartkidz.optimasolution.co.id';
   //  final url = 'http://192.168.1.23:8020/';
-  
-  Future<Map<String, dynamic>> handleTokenRefreshAndRetry(Function originalApiCall) async {
+
+  Future<Map<String, dynamic>> handleTokenRefreshAndRetry(
+    Function originalApiCall,
+  ) async {
     try {
       // First attempt with current token
       var result = await originalApiCall();
-      
+
       // Check if the error is due to invalid token
-      if (result['status'] == false && 
-          result['message'] != null && 
+      if (result['status'] == false &&
+          result['message'] != null &&
           result['message'].toString().contains('Invalid Token')) {
-        
         print('Token invalid, attempting to refresh...');
-        
+
         // Try to refresh the token
         var refreshResult = await tokenRefresh();
-        
+
         if (refreshResult['status'] == true) {
           print('Token refreshed successfully, retrying original request');
           // Retry the original API call with new token
@@ -44,15 +45,12 @@ class Api {
           return refreshResult;
         }
       }
-      
+
       // If not a token error or refresh not needed, return original result
       return result;
     } catch (e) {
       print('Error in handleTokenRefreshAndRetry: $e');
-      return {
-        'status': false,
-        'message': 'Error handling token refresh: $e',
-      };
+      return {'status': false, 'message': 'Error handling token refresh: $e'};
     }
   }
 
@@ -126,9 +124,9 @@ class Api {
     try {
       var response = await http.post(url, headers: headers);
       var data = json.decode(response.body);
-      
+
       print('Token refresh attempt: $data');
-      
+
       if (data['status'] == true) {
         user.remove('token');
         user.write('token', data['data']['access_token']);
@@ -143,11 +141,11 @@ class Api {
           user.remove('email');
           user.remove('pass');
           tglLoginLast.remove('date');
-          
+
           // Reset app controller data
           appController.userProfile.changeVal({});
           appController.userAccess.changeVal({});
-          
+
           // You might want to navigate to login screen here
           // This would typically be handled by the UI layer
         }
@@ -158,87 +156,93 @@ class Api {
       return {
         'status': false,
         'message': 'Error connecting to server during token refresh: $e',
-        'code': 500
+        'code': 500,
       };
     }
   }
 
   Future getProfile() async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/profile');
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/profile');
 
-    var response = await http.get(url, headers: headers);
-    var data = json.decode(response.body);
-    print(data);
-    if (data['status'] == true && data['data'] != null) {
-      appController.userProfile.changeVal(data['data']);
-    }
-
-    return data;
-  }
-
-  Future updateProfile(Map<String, String> dataUser) async {
-    var url = Uri.parse(
-      '${this.url}/api/v1/absensi/profile/${appController.userProfile.state['id']}',
-    );
-
-    // Ensure all values are strings for the API request
-    Map<String, String> raw = {};
-    dataUser.forEach((key, value) {
-      raw[key] = value.toString();
-    });
-
-    try {
-      var response = await http.put(url, headers: headers, body: raw);
+      var response = await http.get(url, headers: headers);
       var data = json.decode(response.body);
-
+      print(data);
       if (data['status'] == true && data['data'] != null) {
-        // Update the local user profile data
         appController.userProfile.changeVal(data['data']);
       }
 
-      print('Update Profile Response: $data');
-      print('Update Profile Request: $raw');
-
       return data;
-    } catch (e) {
-      print('Error updating profile: $e');
-      return {'status': false, 'message': 'Error connecting to server: $e'};
-    }
+    });
+  }
+
+  Future updateProfile(Map<String, String> dataUser) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse(
+        '${this.url}/api/v1/absensi/profile/${appController.userProfile.state['id']}',
+      );
+
+      // Ensure all values are strings for the API request
+      Map<String, String> raw = {};
+      dataUser.forEach((key, value) {
+        raw[key] = value.toString();
+      });
+
+      try {
+        var response = await http.put(url, headers: headers, body: raw);
+        var data = json.decode(response.body);
+
+        if (data['status'] == true && data['data'] != null) {
+          // Update the local user profile data
+          appController.userProfile.changeVal(data['data']);
+        }
+
+        print('Update Profile Response: $data');
+        print('Update Profile Request: $raw');
+
+        return data;
+      } catch (e) {
+        print('Error updating profile: $e');
+        return {'status': false, 'message': 'Error connecting to server: $e'};
+      }
+    });
   }
 
   Future changePass(String oldPass, String newPass, String confPass) async {
-    try {
-      var url = Uri.parse('${this.url}/api/v1/absensi/reset-password');
+    return handleTokenRefreshAndRetry(() async {
+      try {
+        var url = Uri.parse('${this.url}/api/v1/absensi/reset-password');
 
-      var raw = {
-        'old_password': oldPass,
-        'new_password': newPass,
-        'confirm_password': confPass,
-      };
+        var raw = {
+          'old_password': oldPass,
+          'new_password': newPass,
+          'confirm_password': confPass,
+        };
 
-      var response = await http.post(
-        url,
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer ${user.read('token')}',
-        },
-        body: raw,
-      );
-      var data = json.decode(response.body);
+        var response = await http.post(
+          url,
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ${user.read('token')}',
+          },
+          body: raw,
+        );
+        var data = json.decode(response.body);
 
-      if (data['status'] == true) {
-        // Update stored password if successful
-        user.write('pass', newPass);
+        if (data['status'] == true) {
+          // Update stored password if successful
+          user.write('pass', newPass);
+        }
+
+        print('Change Password Response: $data');
+        print('Change Password Request: $raw');
+
+        return data;
+      } catch (e) {
+        print('Error changing password: $e');
+        return {'status': false, 'message': 'Error connecting to server: $e'};
       }
-
-      print('Change Password Response: $data');
-      print('Change Password Request: $raw');
-
-      return data;
-    } catch (e) {
-      print('Error changing password: $e');
-      return {'status': false, 'message': 'Error connecting to server: $e'};
-    }
+    });
   }
 
   Future getAbsensi(
@@ -248,11 +252,19 @@ class Api {
     Map<String, dynamic>? additionalFilters,
   }) async {
     return handleTokenRefreshAndRetry(() async {
-      var urlString = '${this.url}/api/v1/absensi/attendance?category=$category';
+      var urlString =
+          '${this.url}/api/v1/absensi/attendance?category=$category';
 
-      // Perbaikan kondisi untuk memeriksa startDate dan endDate
-      if (startDate.isNotEmpty && endDate.isNotEmpty) {
-        urlString += '&startDate=$startDate&endDate=$endDate';
+      // Debug print for date parameters
+      print('Date parameters - Start: "$startDate", End: "$endDate"');
+
+      // Always include date parameters if they exist, even if one is empty
+      if (startDate.isNotEmpty) {
+        urlString += '&startDate=$startDate';
+      }
+
+      if (endDate.isNotEmpty) {
+        urlString += '&endDate=$endDate';
       }
 
       // Tambahkan parameter tambahan jika tersedia
@@ -292,8 +304,8 @@ class Api {
               : 'Error connecting to server: $e',
         };
       }
-    });  // This is the correct closing brace for handleTokenRefreshAndRetry
-  }  // This is the correct closing brace for getAbsensi
+    }); // This is the correct closing brace for handleTokenRefreshAndRetry
+  } // This is the correct closing brace for getAbsensi
 
   Future addAbsensi(Map<String, String> dataAbsen) async {
     return handleTokenRefreshAndRetry(() async {
@@ -351,6 +363,7 @@ class Api {
     }
   }
 
+  //lembur
   Future getLembur({String startDate = '', String endDate = ''}) async {
     return handleTokenRefreshAndRetry(() async {
       var url = Uri.parse('${this.url}/api/v1/absensi/lembur');
@@ -359,7 +372,9 @@ class Api {
           '${this.url}/api/v1/absensi/lembur?startDate=$startDate&endDate=$endDate',
         );
       } else if (startDate != '') {
-        url = Uri.parse('${this.url}/api/v1/absensi/lembur?startDate=$startDate');
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/lembur?startDate=$startDate',
+        );
       } else if (endDate != '') {
         url = Uri.parse('${this.url}/api/v1/absensi/lembur?endDate=$endDate');
       }
@@ -393,26 +408,28 @@ class Api {
   }
 
   Future addLembur(Map<String, String> dataLembur) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/lembur');
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/lembur');
 
-    // Ensure all values are strings for the API request
-    Map<String, String> raw = {};
-    dataLembur.forEach((key, value) {
-      raw[key] = value.toString();
+      // Ensure all values are strings for the API request
+      Map<String, String> raw = {};
+      dataLembur.forEach((key, value) {
+        raw[key] = value.toString();
+      });
+
+      try {
+        var response = await http.post(url, headers: headers, body: raw);
+        var data = json.decode(response.body);
+
+        print('Add Lembur Response: $data');
+        print('Add Lembur Request: $raw');
+
+        return data;
+      } catch (e) {
+        print('Error updating profile: $e');
+        return {'status': false, 'message': 'Error connecting to server: $e'};
+      }
     });
-
-    try {
-      var response = await http.post(url, headers: headers, body: raw);
-      var data = json.decode(response.body);
-
-      print('Add Lembur Response: $data');
-      print('Add Lembur Request: $raw');
-
-      return data;
-    } catch (e) {
-      print('Error updating profile: $e');
-      return {'status': false, 'message': 'Error connecting to server: $e'};
-    }
   }
 
   Future updateLembur(Map<String, String> dataLembur, String id) async {
@@ -439,7 +456,128 @@ class Api {
   }
 
   Future delLembur(String id) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/lembur/$id');
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/lembur/$id');
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .delete(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Delete Attendance Response: $data');
+
+        return data;
+      } catch (e) {
+        print('Error deleting attendance: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  //Izin
+  Future getIzin({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/izin');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/izin?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/izin?startDate=$startDate');
+      } else if (endDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/izin?endDate=$endDate');
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Attendance Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting attendance data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  Future addIzin(Map<String, String> dataLembur) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/izin');
+
+    // Ensure all values are strings for the API request
+    Map<String, String> raw = {};
+    dataLembur.forEach((key, value) {
+      raw[key] = value.toString();
+    });
+
+    try {
+      var response = await http.post(url, headers: headers, body: raw);
+      var data = json.decode(response.body);
+
+      print('Add Lembur Response: $data');
+      print('Add Lembur Request: $raw');
+
+      return data;
+    } catch (e) {
+      print('Error updating profile: $e');
+      return {'status': false, 'message': 'Error connecting to server: $e'};
+    }
+  }
+
+  Future updateIzin(Map<String, String> dataLembur, String id) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/izin/$id');
+
+    // Ensure all values are strings for the API request
+    Map<String, String> raw = {};
+    dataLembur.forEach((key, value) {
+      raw[key] = value.toString();
+    });
+
+    try {
+      var response = await http.put(url, headers: headers, body: raw);
+      var data = json.decode(response.body);
+
+      print('Add Lembur Response: $data');
+      print('Add Lembur Request: $raw');
+
+      return data;
+    } catch (e) {
+      print('Error updating profile: $e');
+      return {'status': false, 'message': 'Error connecting to server: $e'};
+    }
+  }
+
+  Future delIzin(String id) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/izin/$id');
 
     try {
       // Add timeout to the HTTP request to prevent long waiting times
@@ -469,6 +607,128 @@ class Api {
     }
   }
 
+  //Sakit
+  Future getSakit({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/sakit');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/sakit?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/sakit?startDate=$startDate',
+        );
+      } else if (endDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/sakit?endDate=$endDate');
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Attendance Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting attendance data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  Future addSakit(Map<String, String> dataLembur) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/sakit');
+
+    // Ensure all values are strings for the API request
+    Map<String, String> raw = {};
+    dataLembur.forEach((key, value) {
+      raw[key] = value.toString();
+    });
+
+    try {
+      var response = await http.post(url, headers: headers, body: raw);
+      var data = json.decode(response.body);
+
+      print('Add Lembur Response: $data');
+      print('Add Lembur Request: $raw');
+
+      return data;
+    } catch (e) {
+      print('Error updating profile: $e');
+      return {'status': false, 'message': 'Error connecting to server: $e'};
+    }
+  }
+
+  Future updateSakit(Map<String, String> dataLembur, String id) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/sakit/$id');
+
+    // Ensure all values are strings for the API request
+    Map<String, String> raw = {};
+    dataLembur.forEach((key, value) {
+      raw[key] = value.toString();
+    });
+
+    try {
+      var response = await http.put(url, headers: headers, body: raw);
+      var data = json.decode(response.body);
+
+      print('Add Lembur Response: $data');
+      print('Add Lembur Request: $raw');
+
+      return data;
+    } catch (e) {
+      print('Error updating profile: $e');
+      return {'status': false, 'message': 'Error connecting to server: $e'};
+    }
+  }
+
+  Future delSakit(String id) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/sakit/$id');
+
+    try {
+      // Add timeout to the HTTP request to prevent long waiting times
+      var response = await http
+          .delete(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
+
+      var data = json.decode(response.body);
+      print('Delete Attendance Response: $data');
+
+      return data;
+    } catch (e) {
+      print('Error deleting attendance: $e');
+      return {
+        'status': false,
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
+      };
+    }
+  }
+
+  //Cuti
   Future getTeam() async {
     var url = Uri.parse('${this.url}/api/v1/absensi/team');
 
@@ -537,8 +797,173 @@ class Api {
     }
   }
 
+  //Cuti
+  Future getCuti({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/cuti');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/cuti?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/cuti?startDate=$startDate');
+      } else if (endDate != '') {
+        url = Uri.parse('${this.url}/api/v1/absensi/cuti?endDate=$endDate');
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Cuti Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting cuti data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  Future addCuti(Map<String, String> dataCuti) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/cuti');
+
+    // Ensure all values are strings for the API request
+    Map<String, String> raw = {};
+    dataCuti.forEach((key, value) {
+      raw[key] = value.toString();
+    });
+
+    try {
+      var response = await http.post(url, headers: headers, body: raw);
+      var data = json.decode(response.body);
+
+      print('Add Cuti Response: $data');
+      print('Add Cuti Request: $raw');
+
+      return data;
+    } catch (e) {
+      print('Error adding cuti: $e');
+      return {'status': false, 'message': 'Error connecting to server: $e'};
+    }
+  }
+
+  Future updateCuti(Map<String, String> dataCuti, String id) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/cuti/$id');
+
+    // Ensure all values are strings for the API request
+    Map<String, String> raw = {};
+    dataCuti.forEach((key, value) {
+      raw[key] = value.toString();
+    });
+
+    try {
+      var response = await http.put(url, headers: headers, body: raw);
+      var data = json.decode(response.body);
+
+      print('Update Cuti Response: $data');
+      print('Update Cuti Request: $raw');
+
+      return data;
+    } catch (e) {
+      print('Error updating cuti: $e');
+      return {'status': false, 'message': 'Error connecting to server: $e'};
+    }
+  }
+
+  Future delCuti(String id) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/cuti/$id');
+
+    try {
+      // Add timeout to the HTTP request to prevent long waiting times
+      var response = await http
+          .delete(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out, please try again!',
+              );
+            },
+          );
+
+      var data = json.decode(response.body);
+      print('Delete Cuti Response: $data');
+
+      return data;
+    } catch (e) {
+      print('Error deleting cuti: $e');
+      return {
+        'status': false,
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server: $e',
+      };
+    }
+  }
+
+  //approval Lembur
+  Future getApprovalLembur({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/lembur/approval');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/lembur/approval?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/lembur/approval?startDate=$startDate',
+        );
+      } else if (endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/lembur/approval?endDate=$endDate',
+        );
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Cuti Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting cuti data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
   Future approvalLemburByHRD(String id, Map<String, String> body) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/approval-hrd/$id');
+    var url = Uri.parse('${this.url}/api/v1/absensi/lembur/approval-hrd/$id');
     Map<String, String> header = {
       'Authorization': 'Bearer ${user.read('token')}',
       'Accept': 'application/json',
@@ -620,13 +1045,15 @@ class Api {
   }
 
   Future approvalLemburBySupervisor(String id, Map<String, String> body) async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/approval-supervisor/$id');
+    var url = Uri.parse(
+      '${this.url}/api/v1/absensi/lembur/approval-supervisor/$id',
+    );
     Map<String, String> header = {
       'Authorization': 'Bearer ${user.read('token')}',
       'Accept': 'application/json',
     };
 
-    var response = await http.put(url, headers: header, body:body );
+    var response = await http.put(url, headers: header, body: body);
     var data = json.decode(response.body);
     print('Category Response: $data');
     // var data = {
@@ -698,6 +1125,366 @@ class Api {
     // };
     // print(data);
     print(data);
+    return data;
+  }
+
+  //approval Cuti
+  Future getApprovalCuti({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/cuti/approval');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/cuti/approval?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/cuti/approval?startDate=$startDate',
+        );
+      } else if (endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/cuti/approval?endDate=$endDate',
+        );
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Cuti Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting cuti data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  Future approvalCutiByHRD(String id, Map<String, String> body) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/cuti/approval-hrd/$id');
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body: body);
+    var data = json.decode(response.body);
+    print('Category Response: $data');
+    // var data = {
+    //   "status": true,
+    //   "message": "Success",
+    //   "code": 200,
+    //   "data": [
+    //     {
+    //         "id": 1,
+    //         "code": "SKC0001",
+    //         "name": "Smartkidz Graha Raya"
+    //     },
+    //     {
+    //         "id": 2,
+    //         "code": "SKC0002",
+    //         "name": "Smartkidz Kelapa Dua"
+    //     },
+    //     {
+    //         "id": 3,
+    //         "code": "SKC0003",
+    //         "name": "Smartkidz Spatan"
+    //     },
+    //     {
+    //         "id": 4,
+    //         "code": "SKC0004",
+    //         "name": "Smartkidz Ceger Raya"
+    //     },
+    //     {
+    //         "id": 5,
+    //         "code": "SKC0005",
+    //         "name": "Smartkidz Ahmad Yani Tangerang"
+    //     },
+    //     {
+    //         "id": 6,
+    //         "code": "SKC0006",
+    //         "name": "Smartkidz Grand Batavia"
+    //     },
+    //     {
+    //         "id": 7,
+    //         "code": "SKC0007",
+    //         "name": "Smartkidz Poris Gaga"
+    //     },
+    //     {
+    //         "id": 8,
+    //         "code": "SKC0008",
+    //         "name": "Smartkidz Cileduk"
+    //     },
+    //     {
+    //         "id": 9,
+    //         "code": "SKC0009",
+    //         "name": "Smartkidz Permata Regency"
+    //     },
+    //     {
+    //         "id": 10,
+    //         "code": "SKC0010",
+    //         "name": "Smartkidz Cipondoh"
+    //     },
+    //     {
+    //         "id": 11,
+    //         "code": "SKC0011",
+    //         "name": "Smartkidz Karawaci"
+    //     },
+    //     {
+    //         "id": 12,
+    //         "code": "SKC0012",
+    //         "name": "Smartkidz Semanan"
+    //     }
+    //   ]
+    // };
+    // print(data);
+    print(data);
+    return data;
+  }
+
+  Future approvalCutiBySupervisor(String id, Map<String, String> body) async {
+    var url = Uri.parse(
+      '${this.url}/api/v1/absensi/cuti/approval-supervisor/$id',
+    );
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body: body);
+    var data = json.decode(response.body);
+    print('Category Response: $data');
+    // var data = {
+    //   "status": true,
+    //   "message": "Success",
+    //   "code": 200,
+    //   "data": [
+    //     {
+    //         "id": 1,
+    //         "code": "SKC0001",
+    //         "name": "Smartkidz Graha Raya"
+    //     },
+    //     {
+    //         "id": 2,
+    //         "code": "SKC0002",
+    //         "name": "Smartkidz Kelapa Dua"
+    //     },
+    //     {
+    //         "id": 3,
+    //         "code": "SKC0003",
+    //         "name": "Smartkidz Spatan"
+    //     },
+    //     {
+    //         "id": 4,
+    //         "code": "SKC0004",
+    //         "name": "Smartkidz Ceger Raya"
+    //     },
+    //     {
+    //         "id": 5,
+    //         "code": "SKC0005",
+    //         "name": "Smartkidz Ahmad Yani Tangerang"
+    //     },
+    //     {
+    //         "id": 6,
+    //         "code": "SKC0006",
+    //         "name": "Smartkidz Grand Batavia"
+    //     },
+    //     {
+    //         "id": 7,
+    //         "code": "SKC0007",
+    //         "name": "Smartkidz Poris Gaga"
+    //     },
+    //     {
+    //         "id": 8,
+    //         "code": "SKC0008",
+    //         "name": "Smartkidz Cileduk"
+    //     },
+    //     {
+    //         "id": 9,
+    //         "code": "SKC0009",
+    //         "name": "Smartkidz Permata Regency"
+    //     },
+    //     {
+    //         "id": 10,
+    //         "code": "SKC0010",
+    //         "name": "Smartkidz Cipondoh"
+    //     },
+    //     {
+    //         "id": 11,
+    //         "code": "SKC0011",
+    //         "name": "Smartkidz Karawaci"
+    //     },
+    //     {
+    //         "id": 12,
+    //         "code": "SKC0012",
+    //         "name": "Smartkidz Semanan"
+    //     }
+    //   ]
+    // };
+    // print(data);
+    print(data);
+    return data;
+  }
+
+  //approval Izin
+  Future getApprovalIzin({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/izin/approval');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/izin/approval?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/izin/approval?startDate=$startDate',
+        );
+      } else if (endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/izin/approval?endDate=$endDate',
+        );
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Cuti Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting cuti data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  Future approvalIzinByHRD(String id, Map<String, String> body) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/izin/approval-hrd/$id');
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body: body);
+    var data = json.decode(response.body);
+    print('Category Response: $data');
+    return data;
+  }
+
+  Future approvalIzinBySupervisor(String id, Map<String, String> body) async {
+    var url = Uri.parse(
+      '${this.url}/api/v1/absensi/izin/approval-supervisor/$id',
+    );
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body: body);
+    var data = json.decode(response.body);
+    print('Category Response: $data');
+    return data;
+  }
+
+  //approval Sakit
+  Future getApprovalSakit({String startDate = '', String endDate = ''}) async {
+    return handleTokenRefreshAndRetry(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/sakit/approval');
+      if (startDate != '' && endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/sakit/approval?startDate=$startDate&endDate=$endDate',
+        );
+      } else if (startDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/sakit/approval?startDate=$startDate',
+        );
+      } else if (endDate != '') {
+        url = Uri.parse(
+          '${this.url}/api/v1/absensi/sakit/approval?endDate=$endDate',
+        );
+      }
+
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
+
+        var data = json.decode(response.body);
+        print('Get Cuti Response: $data');
+        return data;
+      } catch (e) {
+        print('Error getting cuti data: $e');
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
+  }
+
+  Future approvalSakitByHRD(String id, Map<String, String> body) async {
+    var url = Uri.parse('${this.url}/api/v1/absensi/sakit/approval-hrd/$id');
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body: body);
+    var data = json.decode(response.body);
+    print('Category Response: $data');
+    return data;
+  }
+
+  Future approvalSakitBySupervisor(String id, Map<String, String> body) async {
+    var url = Uri.parse(
+      '${this.url}/api/v1/absensi/sakit/approval-supervisor/$id',
+    );
+    Map<String, String> header = {
+      'Authorization': 'Bearer ${user.read('token')}',
+      'Accept': 'application/json',
+    };
+
+    var response = await http.put(url, headers: header, body: body);
+    var data = json.decode(response.body);
+    print('Category Response: $data');
     return data;
   }
 }
@@ -708,289 +1495,155 @@ class MasterApi {
   // final url = 'https://dev-api-smartkidz.optimasolution.co.id';
   // final urlimg = 'https://dev-smartkidz.optimasolution.co.id';
   //  final url = 'http://192.168.1.23:8020/';
+  final Api _api = Api(); // Add an instance of Api for token refresh handling
 
   Map<String, String> headers = {
     'Authorization': 'Bearer ${user.read('token')}',
     'Accept': 'application/json',
   };
 
-  Future category() async {
-    try {
-      var url = Uri.parse('${this.url}/api/v1/absensi/category');
+  // Helper method to handle token refresh for all MasterApi methods
+  Future<Map<String, dynamic>> _handleTokenRefresh(
+    Function originalApiCall,
+  ) async {
+    return _api.handleTokenRefreshAndRetry(originalApiCall);
+  }
+
+  Future categoryAbsensi() async {
+    return _handleTokenRefresh(() async {
+      try {
+        var url = Uri.parse('${this.url}/api/v1/absensi/category');
+        Map<String, String> header = {
+          'Authorization': 'Bearer ${user.read('token')}',
+          'Accept': 'application/json',
+        };
+
+        var response = await http.get(url, headers: header);
+        var data = json.decode(response.body);
+        print('Category Response: $data');
+        print(data);
+        return data;
+      } catch (e) {
+        print('Error in category: $e');
+        return {'status': false, 'message': 'Error fetching categories: $e'};
+      }
+    });
+  }
+
+  Future jenisLembur() async {
+    return _handleTokenRefresh(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/jenis-lembur');
       Map<String, String> header = {
         'Authorization': 'Bearer ${user.read('token')}',
         'Accept': 'application/json',
       };
 
-      var response = await http.get(url, headers: header);
-      var data = json.decode(response.body);
-      print('Category Response: $data');
-      
-      // Check if token is invalid
-      if (data['status'] == false && 
-          data['message'] != null && 
-          data['message'].toString().contains('Invalid Token')) {
-        
-        print('Token invalid, attempting to refresh...');
-        
-        // Try to refresh the token
-        var api = Api();
-        var refreshResult = await api.tokenRefresh();
-        
-        if (refreshResult['status'] == true) {
-          print('Token refreshed successfully, retrying category request');
-          // Retry the category request with new token
-          header = {
-            'Authorization': 'Bearer ${user.read('token')}',
-            'Accept': 'application/json',
-          };
-          response = await http.get(url, headers: header);
-          data = json.decode(response.body);
-        } else {
-          print('Token refresh failed: ${refreshResult['message']}');
-        }
+      try {
+        var response = await http.get(url, headers: header);
+        var data = json.decode(response.body);
+        print('Jenis Lembur Response: $data');
+        print(data);
+        return data;
+      } catch (e) {
+        print('Error in jenisLembur: $e');
+        return {'status': false, 'message': 'Error fetching jenis lembur: $e'};
       }
-      
-      print(data);
-      return data;
-    } catch (e) {
-      print('Error in category: $e');
-      return {
-        'status': false,
-        'message': 'Error fetching categories: $e',
-      };
-    }
-  }
-
-  Future jenisLembur() async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/jenis-lembur');
-    Map<String, String> header = {
-      'Authorization': 'Bearer ${user.read('token')}',
-      'Accept': 'application/json',
-    };
-
-    var response = await http.get(url, headers: header);
-    var data = json.decode(response.body);
-    print('Category Response: $data');
-    // var data = {
-    //   "status": true,
-    //   "message": "Success",
-    //   "code": 200,
-    //   "data": [
-    //     {
-    //         "id": 1,
-    //         "code": "SKC0001",
-    //         "name": "Smartkidz Graha Raya"
-    //     },
-    //     {
-    //         "id": 2,
-    //         "code": "SKC0002",
-    //         "name": "Smartkidz Kelapa Dua"
-    //     },
-    //     {
-    //         "id": 3,
-    //         "code": "SKC0003",
-    //         "name": "Smartkidz Spatan"
-    //     },
-    //     {
-    //         "id": 4,
-    //         "code": "SKC0004",
-    //         "name": "Smartkidz Ceger Raya"
-    //     },
-    //     {
-    //         "id": 5,
-    //         "code": "SKC0005",
-    //         "name": "Smartkidz Ahmad Yani Tangerang"
-    //     },
-    //     {
-    //         "id": 6,
-    //         "code": "SKC0006",
-    //         "name": "Smartkidz Grand Batavia"
-    //     },
-    //     {
-    //         "id": 7,
-    //         "code": "SKC0007",
-    //         "name": "Smartkidz Poris Gaga"
-    //     },
-    //     {
-    //         "id": 8,
-    //         "code": "SKC0008",
-    //         "name": "Smartkidz Cileduk"
-    //     },
-    //     {
-    //         "id": 9,
-    //         "code": "SKC0009",
-    //         "name": "Smartkidz Permata Regency"
-    //     },
-    //     {
-    //         "id": 10,
-    //         "code": "SKC0010",
-    //         "name": "Smartkidz Cipondoh"
-    //     },
-    //     {
-    //         "id": 11,
-    //         "code": "SKC0011",
-    //         "name": "Smartkidz Karawaci"
-    //     },
-    //     {
-    //         "id": 12,
-    //         "code": "SKC0012",
-    //         "name": "Smartkidz Semanan"
-    //     }
-    //   ]
-    // };
-    // print(data);
-    print(data);
-    return data;
+    });
   }
 
   Future approvalLembur() async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/approval-lembur');
-    Map<String, String> header = {
-      'Authorization': 'Bearer ${user.read('token')}',
-      'Accept': 'application/json',
-    };
+    return _handleTokenRefresh(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/approval-lembur');
+      Map<String, String> header = {
+        'Authorization': 'Bearer ${user.read('token')}',
+        'Accept': 'application/json',
+      };
 
-    var response = await http.get(url, headers: header);
-    var data = json.decode(response.body);
-    print('Category Response: $data');
-    // var data = {
-    //   "status": true,
-    //   "message": "Success",
-    //   "code": 200,
-    //   "data": [
-    //     {
-    //         "id": 1,
-    //         "code": "SKC0001",
-    //         "name": "Smartkidz Graha Raya"
-    //     },
-    //     {
-    //         "id": 2,
-    //         "code": "SKC0002",
-    //         "name": "Smartkidz Kelapa Dua"
-    //     },
-    //     {
-    //         "id": 3,
-    //         "code": "SKC0003",
-    //         "name": "Smartkidz Spatan"
-    //     },
-    //     {
-    //         "id": 4,
-    //         "code": "SKC0004",
-    //         "name": "Smartkidz Ceger Raya"
-    //     },
-    //     {
-    //         "id": 5,
-    //         "code": "SKC0005",
-    //         "name": "Smartkidz Ahmad Yani Tangerang"
-    //     },
-    //     {
-    //         "id": 6,
-    //         "code": "SKC0006",
-    //         "name": "Smartkidz Grand Batavia"
-    //     },
-    //     {
-    //         "id": 7,
-    //         "code": "SKC0007",
-    //         "name": "Smartkidz Poris Gaga"
-    //     },
-    //     {
-    //         "id": 8,
-    //         "code": "SKC0008",
-    //         "name": "Smartkidz Cileduk"
-    //     },
-    //     {
-    //         "id": 9,
-    //         "code": "SKC0009",
-    //         "name": "Smartkidz Permata Regency"
-    //     },
-    //     {
-    //         "id": 10,
-    //         "code": "SKC0010",
-    //         "name": "Smartkidz Cipondoh"
-    //     },
-    //     {
-    //         "id": 11,
-    //         "code": "SKC0011",
-    //         "name": "Smartkidz Karawaci"
-    //     },
-    //     {
-    //         "id": 12,
-    //         "code": "SKC0012",
-    //         "name": "Smartkidz Semanan"
-    //     }
-    //   ]
-    // };
-    // print(data);
-    print(data);
-    return data;
+      try {
+        var response = await http.get(url, headers: header);
+        var data = json.decode(response.body);
+        print('Approval Lembur Response: $data');
+        print(data);
+        return data;
+      } catch (e) {
+        print('Error in approvalLembur: $e');
+        return {
+          'status': false,
+          'message': 'Error fetching approval lembur: $e',
+        };
+      }
+    });
   }
 
   Future divisi() async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/divisi');
+    return _handleTokenRefresh(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/divisi');
 
-    try {
-      // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http
-          .get(url, headers: headers)
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () {
-              throw TimeoutException(
-                'The connection has timed out, please try again!',
-              );
-            },
-          );
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
 
-      var data = json.decode(response.body);
-      print(
-        'Get Team Response: $data',
-      ); // Updated log message to be more specific
-      return data;
-    } catch (e) {
-      print(
-        'Error getting team data: $e',
-      ); // Updated error message to be more specific
-      return {
-        'status': false,
-        'message': e is TimeoutException
-            ? e.message
-            : 'Error connecting to server: $e',
-      };
-    }
+        var data = json.decode(response.body);
+        print(
+          'Get Divisi Response: $data',
+        ); // Updated log message to be more specific
+        return data;
+      } catch (e) {
+        print(
+          'Error getting divisi data: $e',
+        ); // Updated error message to be more specific
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
   }
 
   Future jabatan() async {
-    var url = Uri.parse('${this.url}/api/v1/absensi/jabatan');
+    return _handleTokenRefresh(() async {
+      var url = Uri.parse('${this.url}/api/v1/absensi/jabatan');
 
-    try {
-      // Add timeout to the HTTP request to prevent long waiting times
-      var response = await http
-          .get(url, headers: headers)
-          .timeout(
-            const Duration(seconds: 15),
-            onTimeout: () {
-              throw TimeoutException(
-                'The connection has timed out, please try again!',
-              );
-            },
-          );
+      try {
+        // Add timeout to the HTTP request to prevent long waiting times
+        var response = await http
+            .get(url, headers: headers)
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException(
+                  'The connection has timed out, please try again!',
+                );
+              },
+            );
 
-      var data = json.decode(response.body);
-      print(
-        'Get Team Response: $data',
-      ); // Updated log message to be more specific
-      return data;
-    } catch (e) {
-      print(
-        'Error getting team data: $e',
-      ); // Updated error message to be more specific
-      return {
-        'status': false,
-        'message': e is TimeoutException
-            ? e.message
-            : 'Error connecting to server: $e',
-      };
-    }
+        var data = json.decode(response.body);
+        print(
+          'Get Jabatan Response: $data',
+        ); // Updated log message to be more specific
+        return data;
+      } catch (e) {
+        print(
+          'Error getting jabatan data: $e',
+        ); // Updated error message to be more specific
+        return {
+          'status': false,
+          'message': e is TimeoutException
+              ? e.message
+              : 'Error connecting to server: $e',
+        };
+      }
+    });
   }
 }

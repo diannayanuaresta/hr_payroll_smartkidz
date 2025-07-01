@@ -10,7 +10,6 @@ import 'package:hr_payroll_smartkidz/bloc/theme_bloc.dart';
 import 'package:hr_payroll_smartkidz/components/color_app.dart';
 import 'package:hr_payroll_smartkidz/services/route.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {

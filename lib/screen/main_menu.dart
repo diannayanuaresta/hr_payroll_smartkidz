@@ -4,18 +4,13 @@ import 'dart:math' as Math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
-import 'package:hr_payroll_smartkidz/components/color_app.dart';
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/attend_controller.dart';
-import 'package:hr_payroll_smartkidz/controller/letter_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/main_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/overtime_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/tim_controller.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/account_list.dart';
-import 'package:hr_payroll_smartkidz/screen/staff/approval_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/attend_list.dart';
-import 'package:hr_payroll_smartkidz/screen/staff/document_list.dart';
-import 'package:hr_payroll_smartkidz/screen/staff/overtime_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/tim_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/letter_list.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
@@ -23,7 +18,6 @@ import 'package:responsive_builder/responsive_builder.dart';
 import 'package:intl/intl.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
@@ -176,137 +170,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       tablet: (context) => _buildScaffold(context, isTablet: true),
       desktop: (context) => _buildScaffold(context, isDesktop: true),
       watch: (context) => _buildScaffold(context, isWatch: true),
-    );
-  }
-
-  // Show date filter dialog for attendance screen
-  void _showDateFilterDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter by Date Range'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Start Date
-            ListTile(
-              title: const Text('Start Date'),
-              subtitle: Text(
-                _startDate == null
-                    ? 'Not set'
-                    : DateFormat(
-                        'EEEE, d MMMM yyyy',
-                        'id_ID',
-                      ).format(_startDate!),
-              ),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: _startDate ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _startDate = picked;
-                  });
-                }
-              },
-            ),
-
-            // End Date
-            ListTile(
-              title: const Text('End Date'),
-              subtitle: Text(
-                _endDate == null
-                    ? 'Not set'
-                    : DateFormat(
-                        'EEEE, d MMMM yyyy',
-                        'id_ID',
-                      ).format(_endDate!),
-              ),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: _endDate ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _endDate = picked;
-                  });
-                }
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _startDate = null;
-                _endDate = null;
-              });
-              Navigator.pop(context);
-
-              // Store date filter in app controller for AttendanceScreen to use
-              appController.tglAwalFilter.changeVal('');
-              appController.tglAkhirFilter.changeVal('');
-
-              // Notify AttendanceScreen or OvertimeScreen to reload data
-              if (mainController.currentIndexMenu.state == 0) {
-                // Trigger reload in AttendanceScreen
-                attendController.reloadAttendanceData.changeVal('true');
-              } else if (mainController.currentIndexMenu.state == 2) {
-                // Trigger reload in OvertimeScreen
-                overtimeController.reloadOvertimeData.changeVal('true');
-              }
-            },
-            child: const Text('Clear'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-
-              // Store date filter in app controller for AttendanceScreen to use
-              if (_startDate != null) {
-                appController.tglAwalFilter.changeVal(
-                  DateFormat('yyyy-MM-dd').format(_startDate!),
-                );
-              } else {
-                appController.tglAwalFilter.changeVal('');
-              }
-
-              if (_endDate != null) {
-                appController.tglAkhirFilter.changeVal(
-                  DateFormat('yyyy-MM-dd').format(_endDate!),
-                );
-              } else {
-                appController.tglAkhirFilter.changeVal('');
-              }
-
-              // Notify AttendanceScreen or OvertimeScreen to reload data
-              if (mainController.currentIndexMenu.state == 0) {
-                // Trigger reload in AttendanceScreen
-                attendController.reloadAttendanceData.changeVal('true');
-              } else if (mainController.currentIndexMenu.state == 2) {
-                // Trigger reload in OvertimeScreen
-                overtimeController.reloadOvertimeData.changeVal('true');
-              }
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -506,29 +369,29 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   const SizedBox(height: 16),
 
                   // Location information
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Location:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Latitude: ${_currentPosition?.latitude ?? 'Unknown'}',
-                        ),
-                        Text(
-                          'Longitude: ${_currentPosition?.longitude ?? 'Unknown'}',
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Container(
+                  //   padding: const EdgeInsets.all(12),
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.grey[200],
+                  //     borderRadius: BorderRadius.circular(8),
+                  //   ),
+                  //   child: Column(
+                  //     crossAxisAlignment: CrossAxisAlignment.start,
+                  //     children: [
+                  //       const Text(
+                  //         'Location:',
+                  //         style: TextStyle(fontWeight: FontWeight.bold),
+                  //       ),
+                  //       const SizedBox(height: 4),
+                  //       Text(
+                  //         'Latitude: ${_currentPosition?.latitude ?? 'Unknown'}',
+                  //       ),
+                  //       Text(
+                  //         'Longitude: ${_currentPosition?.longitude ?? 'Unknown'}',
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
 
                   const SizedBox(height: 16),
 
@@ -681,23 +544,23 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             }
           },
         ),
-        leading: BlocBuilder(
-          bloc: mainController.currentIndexMenu,
-          builder: (context, state) {
-            // Show filter button when on Presensi screen (index 0) or Letter screen (index 2)
-            if (mainController.currentIndexMenu.state == 0 ||
-                mainController.currentIndexMenu.state == 2) {
-              return IconButton(
-                icon: const Icon(Icons.filter_alt, color: Colors.white),
-                onPressed: () => _showDateFilterDialog(context),
-              );
-            }
-            // Trigger reload in LetterScreen
-            // Trigger reload in LetterScreen
-            letterController.reloadLetterData.changeVal('true');
-            return const SizedBox.shrink(); // Empty widget when not on Presensi or Letter screen
-          },
-        ),
+        // leading: BlocBuilder(
+        //   bloc: mainController.currentIndexMenu,
+        //   builder: (context, state) {
+        //     // Show filter button when on Presensi screen (index 0) or Letter screen (index 2)
+        //     if (mainController.currentIndexMenu.state == 0 ||
+        //         mainController.currentIndexMenu.state == 2) {
+        //       return IconButton(
+        //         icon: const Icon(Icons.filter_alt, color: Colors.white),
+        //         onPressed: () => _showDateFilterDialog(context),
+        //       );
+        //     }
+        //     // Trigger reload in LetterScreen
+        //     // Trigger reload in LetterScreen
+        //     letterController.reloadLetterData.changeVal('true');
+        //     return const SizedBox.shrink(); // Empty widget when not on Presensi or Letter screen
+        //   },
+        // ),
       ),
       body: BlocBuilder(
         bloc: mainController.currentIndexMenu,

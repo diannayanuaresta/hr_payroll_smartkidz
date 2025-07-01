@@ -1,60 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_builder/responsive_builder.dart';
-import 'package:hr_payroll_smartkidz/components/color_app.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hr_payroll_smartkidz/controller/tim_controller.dart';
 import 'package:hr_payroll_smartkidz/bloc/list_map_bloc.dart';
 import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
+import 'package:hr_payroll_smartkidz/bloc/count_bloc.dart';
 
-class TeamListScreen extends StatefulWidget {
+class TeamListScreen extends StatelessWidget {
   const TeamListScreen({super.key});
 
   @override
-  State<TeamListScreen> createState() => _TeamListScreenState();
-}
-
-class _TeamListScreenState extends State<TeamListScreen> {
-  String bulkAction = 'Present';
-  List<bool> selected = [];
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTeamData();
-  }
-  
-  Future<void> _loadTeamData() async {
-    setState(() {
-      isLoading = true;
-    });
-    
-    await timController.getTeamData();
-    
-    // Inisialisasi selected list berdasarkan jumlah data tim
-    if (timController.teamListData.state.listDataMap.isNotEmpty) {
-      selected = List<bool>.filled(timController.teamListData.state.listDataMap.length, false);
-    }
-    
-    setState(() {
-      isLoading = false;
-    });
-  }
-
-  void applyBulkAction() {
-    setState(() {
-      for (int i = 0; i < timController.teamListData.state.listDataMap.length; i++) {
-        if (selected[i]) {
-          // Update status di data tim jika diperlukan
-          // Ini hanya contoh, sesuaikan dengan struktur data tim yang sebenarnya
-          timController.teamListData.state.listDataMap[i]['status'] = bulkAction == 'Present' ? 'active' : 'inactive';
-        }
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Initialize data loading when the screen is first built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      timController.getTeamData();
+    });
+    
     return ScreenTypeLayout.builder(
       mobile: (context) => buildMainContent(context, fontSize: 14, padding: 12),
       tablet: (context) => buildMainContent(context, fontSize: 16, padding: 24),
@@ -68,19 +29,15 @@ class _TeamListScreenState extends State<TeamListScreen> {
   }
 
   Widget buildMainContent(BuildContext context, {double fontSize = 14, double padding = 12}) {
-    // Hitung jumlah tim berdasarkan status (jika ada)
-    int totalCount = timController.teamListData.state.listDataMap.length;
-    int activeCount = timController.teamListData.state.listDataMap
-        .where((team) => team['status'] == 'active')
-        .length;
-    int inactiveCount = totalCount - activeCount;
-  
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
-          return Expanded(
-                child: isLoading
+          return BlocBuilder<CustomBloc, String>(
+            bloc: timController.reloadTimData,
+            builder: (context, loadingState) {
+              return Expanded(
+                child: loadingState == 'loading'
                   ? Center(child: CircularProgressIndicator())
                   : BlocBuilder<ListMapBloc, DataMap>(
                       bloc: timController.teamListData,
@@ -102,107 +59,118 @@ class _TeamListScreenState extends State<TeamListScreen> {
                         // Dapatkan daftar anggota tim yang berulang tahun hari ini
                         final birthdayMembers = timController.getBirthdayMembersToday();
                         
-                        return SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Tampilkan container ulang tahun jika ada anggota tim yang berulang tahun hari ini
-                              if (birthdayMembers.isNotEmpty) ...[  
-                                Container(
-                                  width: MediaQuery.of(context).size.width * 0.9,
-                                  margin: EdgeInsets.all(padding),
-                                  padding: EdgeInsets.all(padding),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber[100],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.amber),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.cake, color: Colors.amber[800]),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Ulang Tahun Hari Ini',
-                                            style: TextStyle(
-                                              fontSize: fontSize + 2,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.amber[800],
-                                            ),
-                                          ),
-                                        ],
+                        // Create a BlocBuilder for selected items
+                        return BlocBuilder<CountBloc, int>(
+                          bloc: timController.currentIndexTim,
+                          builder: (context, selectedIndex) {
+                            // Create a list to track selected items
+                            List<bool> selected = List<bool>.filled(state.listDataMap.length, false);
+                            
+                            return SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // Tampilkan container ulang tahun jika ada anggota tim yang berulang tahun hari ini
+                                  if (birthdayMembers.isNotEmpty) ...[  
+                                    Container(
+                                      width: MediaQuery.of(context).size.width * 0.9,
+                                      margin: EdgeInsets.all(padding),
+                                      padding: EdgeInsets.all(padding),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber[100],
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.amber),
                                       ),
-                                      SizedBox(height: 8),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: birthdayMembers.map((member) {
-                                          return Padding(
-                                            padding: EdgeInsets.symmetric(vertical: 4),
-                                            child: Text(
-                                              '${member['nama']} - ${member['jabatan'] ?? 'Anggota Tim'}',
-                                              style: TextStyle(
-                                                fontSize: fontSize,
-                                                color: Colors.amber[900],
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.cake, color: Colors.amber[800]),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Ulang Tahun Hari Ini',
+                                                style: TextStyle(
+                                                  fontSize: fontSize + 2,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.amber[800],
+                                                ),
                                               ),
-                                            ));
-                                          }).toList(),
+                                            ],
+                                          ),
+                                          SizedBox(height: 8),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: birthdayMembers.map((member) {
+                                              return Padding(
+                                                padding: EdgeInsets.symmetric(vertical: 4),
+                                                child: Text(
+                                                  '${member['nama']} - ${member['jabatan'] ?? 'Anggota Tim'}',
+                                                  style: TextStyle(
+                                                    fontSize: fontSize,
+                                                    color: Colors.amber[900],
+                                                  ),
+                                                ));
+                                              }).toList(),
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
+                                      SizedBox(height: 16),
+                                    ],
+                                    
+                                    // Tampilkan leader jika ada
+                                    if (leader.isNotEmpty) ...[  
+                                    Padding(
+                                      padding: EdgeInsets.all(padding),
+                                      child: Text(
+                                        'Team Leader',
+                                        style: TextStyle(
+                                          fontSize: fontSize + 2,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    _buildTeamCard(context, leader, 0, fontSize, selected),
+                                    SizedBox(height: 16),
+                                  ],
+                                  
+                                  // Tampilkan members
+                                  Padding(
+                                    padding: EdgeInsets.all(padding),
+                                    child: Text(
+                                      'Team Members',
+                                      style: TextStyle(
+                                        fontSize: fontSize + 2,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                  SizedBox(height: 16),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: NeverScrollableScrollPhysics(),
+                                    padding: EdgeInsets.all(padding),
+                                    itemCount: members.length,
+                                    itemBuilder: (context, index) {
+                                      return _buildTeamCard(context, members[index], index + 1, fontSize, selected);
+                                    },
+                                  ),
                                 ],
-                                
-                                // Tampilkan leader jika ada
-                                if (leader.isNotEmpty) ...[  
-                                Padding(
-                                  padding: EdgeInsets.all(padding),
-                                  child: Text(
-                                    'Team Leader',
-                                    style: TextStyle(
-                                      fontSize: fontSize + 2,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                _buildTeamCard(context, leader, 0, fontSize),
-                                SizedBox(height: 16),
-                              ],
-                              
-                              // Tampilkan members
-                              Padding(
-                                padding: EdgeInsets.all(padding),
-                                child: Text(
-                                  'Team Members',
-                                  style: TextStyle(
-                                    fontSize: fontSize + 2,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
                               ),
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                padding: EdgeInsets.all(padding),
-                                itemCount: members.length,
-                                itemBuilder: (context, index) {
-                                  return _buildTeamCard(context, members[index], index + 1, fontSize);
-                                },
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         );
                       },
                     ),
               );
+            },
+          );
         },
       ),
     );
   }
   
   // Widget untuk menampilkan card tim
-  Widget _buildTeamCard(BuildContext context, Map<String, dynamic> team, int index, double fontSize) {
+  Widget _buildTeamCard(BuildContext context, Map<String, dynamic> team, int index, double fontSize, List<bool> selected) {
     // Menggunakan data sesuai dengan struktur JSON yang diberikan
     final nama = team['nama'] ?? 'Unknown';
     final nip = team['nip'] ?? '-';
@@ -219,7 +187,8 @@ class _TeamListScreenState extends State<TeamListScreen> {
     return Center( // Tambahkan Center widget untuk leader
       child: Container(
         width: containerWidth,
-        height: 0.3*MediaQuery.of(context).size.height,
+        // Change from 0.3 to 0.18 of screen height to make it shorter
+        height: 0.18 * MediaQuery.of(context).size.height,
         margin: EdgeInsets.only(bottom: 12, right: role == 'Leader' ? 0 : 12), // Hapus margin kanan untuk leader
         child: Card(
           elevation: 3,
@@ -243,10 +212,14 @@ class _TeamListScreenState extends State<TeamListScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Checkbox(
-                      value: selected.length > index ? selected[index] : false,
-                      onChanged: (val) => setState(() => selected[index] = val!),
-                    ),
+                    // StatefulBuilder(
+                    //   builder: (context, setState) {
+                    //     return Checkbox(
+                    //       value: selected.length > index ? selected[index] : false,
+                    //       onChanged: (val) => setState(() => selected[index] = val!),
+                    //     );
+                    //   },
+                    // ),
                   ],
                 ),
                 Row(
@@ -263,7 +236,7 @@ class _TeamListScreenState extends State<TeamListScreen> {
                   ],
               ),
               Text(
-                'Jabatan: ${jabatan}',
+                'Jabatan: $jabatan',
                 style: TextStyle(fontSize: fontSize - 2),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -274,21 +247,21 @@ class _TeamListScreenState extends State<TeamListScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _ActionCard(icon: Icons.edit, label: 'Edit'),
-                  const SizedBox(width: 12),
-                  _ActionCard(icon: Icons.delete, label: 'Delete'),
-                ],
-              ),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.end,
+              //   children: [
+              //     _ActionCard(icon: Icons.edit, label: 'Edit'),
+              //     const SizedBox(width: 12),
+              //     _ActionCard(icon: Icons.delete, label: 'Delete'),
+              //   ],
+              // ),
         ]  ),
         ),
       ),
     ));
   }
 
-  Widget statBox(int count, String label, Color color, double fontSize) {
+  Widget statBox(BuildContext context, int count, String label, Color color, double fontSize) {
     return Container(
       width: 100,
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -309,8 +282,7 @@ class _TeamListScreenState extends State<TeamListScreen> {
   }
 }
 
-// Model class tidak diperlukan lagi karena kita menggunakan data dari API
-
+// Helper widgets remain unchanged
 class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -344,7 +316,7 @@ class _ActionCard extends StatelessWidget {
 
 class _Tag extends StatelessWidget {
   final String label;
-  final Color? color; // Tambahkan parameter warna
+  final Color? color;
 
   const _Tag({required this.label, this.color});
 

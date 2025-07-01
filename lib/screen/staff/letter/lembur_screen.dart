@@ -5,21 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart' show BlocBuilder;
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/overtime_controller.dart';
-import 'package:hr_payroll_smartkidz/screen/staff/approval_list.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
-import 'package:nb_utils/nb_utils.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:intl/intl.dart';
 import 'package:hr_payroll_smartkidz/components/color_app.dart';
 
-class OvertimeScreen extends StatefulWidget {
-  const OvertimeScreen({super.key});
+class LemburScreen extends StatefulWidget {
+  const LemburScreen({super.key});
 
   @override
-  State<OvertimeScreen> createState() => _OvertimeScreenState();
+  State<LemburScreen> createState() => _LemburScreenState();
 }
 
-class _OvertimeScreenState extends State<OvertimeScreen>
+class _LemburScreenState extends State<LemburScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -258,14 +256,7 @@ class _OvertimeScreenState extends State<OvertimeScreen>
     _startTimeController.clear();
     _endTimeController.clear();
     _dateController.clear();
-    _selectedOvertimeType = 'event';
-
-    // Map for overtime types
-    final Map<String, String> overtimeTypes = {
-      'event': 'Event',
-      'tahunan': 'Tahunan',
-      'bulanan': 'Bulanan',
-    };
+    _selectedOvertimeType = '';
 
     // Form key for validation
     final formKey = GlobalKey<FormState>();
@@ -758,7 +749,7 @@ class _OvertimeScreenState extends State<OvertimeScreen>
                           children: [
                             CircularProgressIndicator(),
                             SizedBox(height: 16),
-                            Text('Menyimpan data...'),
+                            Text('Menyimpan perubahan...'),
                           ],
                         ),
                       );
@@ -870,8 +861,6 @@ class _OvertimeScreenState extends State<OvertimeScreen>
     }
   }
 
-  // Submit overtime form data to API
-
   Widget _buildScaffold(
     BuildContext context, {
     bool isTablet = false,
@@ -884,6 +873,10 @@ class _OvertimeScreenState extends State<OvertimeScreen>
     // Wrap with Scaffold to provide Material context
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text('Lembur'),
+        backgroundColor: ColorApp.lightPrimary,
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddOvertimeForm(context),
         backgroundColor: ColorApp.lightPrimary,
@@ -968,7 +961,7 @@ class _OvertimeScreenState extends State<OvertimeScreen>
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
-                                child: OvertimeCard(
+                                child: LemburCard(
                                   name: overtime['name'] ?? 'Staff',
                                   role: overtime['role'] ?? 'Employee',
                                   date: overtime['tanggal'] ?? '-',
@@ -981,6 +974,7 @@ class _OvertimeScreenState extends State<OvertimeScreen>
                                   avatarRadius: avatarRadius,
                                   overtimeData:
                                       overtime, // Pass the full overtime data
+                                  onEdit: (data) => _showEditOvertimeForm(context, data),
                                 ),
                               );
                             },
@@ -993,7 +987,7 @@ class _OvertimeScreenState extends State<OvertimeScreen>
   }
 }
 
-class OvertimeCard extends StatelessWidget {
+class LemburCard extends StatelessWidget {
   final String name;
   final String role;
   final String date;
@@ -1001,13 +995,13 @@ class OvertimeCard extends StatelessWidget {
   final String endTime;
   final String status;
   final String duration;
-  final String location;
   final String notes;
   final String avatarLabel;
   final double avatarRadius;
   final Map<dynamic, dynamic> overtimeData; // Full overtime data
+  final Function(Map<dynamic, dynamic>) onEdit;
 
-  const OvertimeCard({
+  const LemburCard({
     super.key,
     required this.name,
     required this.role,
@@ -1016,11 +1010,11 @@ class OvertimeCard extends StatelessWidget {
     required this.endTime,
     required this.status,
     required this.duration,
-    this.location = '-',
     this.notes = '-',
-    this.avatarLabel = 'A',
+    this.avatarLabel = 'O',
     this.avatarRadius = 20.0,
     required this.overtimeData,
+    required this.onEdit,
   });
 
   @override
@@ -1033,8 +1027,8 @@ class OvertimeCard extends StatelessWidget {
 
     // Format date and time for better readability
     String formattedDate = _formatDate(dateToFormat);
-    String formattedStartTime = _formatTime(startTime);
-    String formattedEndTime = _formatTime(endTime);
+String formattedStartTime = startTime == '-' || startTime.isEmpty ? '-' : startTime;
+String formattedEndTime = endTime ?? '-';
 
     // Determine status color based on approval status
     Color statusColor = Colors.orange; // Default pending color
@@ -1156,7 +1150,6 @@ class OvertimeCard extends StatelessWidget {
             ],
           ),
 
-          // Location section removed as it's not in the overtime data
           if (notes != '-') ...[
             // Only show if notes are available
             const SizedBox(height: 12),
@@ -1218,269 +1211,8 @@ class OvertimeCard extends StatelessWidget {
       return;
     }
 
-    // Panggil fungsi untuk menampilkan form edit
-    _showEditOvertimeForm(context, overtimeData);
-  }
-
-  // Helper method to parse TimeOfDay from string
-  TimeOfDay? _parseTimeOfDay(String timeString) {
-    if (timeString.isEmpty) return null;
-
-    try {
-      final parts = timeString.split(':');
-      if (parts.length >= 2) {
-        final hour = int.parse(parts[0]);
-        final minute = int.parse(parts[1]);
-        return TimeOfDay(hour: hour, minute: minute);
-      }
-    } catch (e) {
-      print('Error parsing time: $e');
-    }
-
-    return null;
-  }
-
-  void _showEditOvertimeForm(
-    BuildContext context,
-    Map<dynamic, dynamic> overtimeData,
-  ) {
-    // Set form values from existing data
-    final String id = overtimeData['id']?.toString() ?? '';
-    final TextEditingController keperluanController = TextEditingController(
-      text: overtimeData['keperluan'] ?? '',
-    );
-    final TextEditingController startTimeController = TextEditingController(
-      text: overtimeData['jamMulai'] ?? '',
-    );
-    final TextEditingController endTimeController = TextEditingController(
-      text: overtimeData['jamSelesai'] ?? '',
-    );
-    final TextEditingController dateController = TextEditingController(
-      text: overtimeData['tanggal'] ?? '',
-    );
-    String selectedOvertimeType = overtimeData['jenisLembur']?.toString() ?? '';
-
-    // Form key for validation
-    final formKey = GlobalKey<FormState>();
-
-    // Show dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Edit Data Lembur'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Date Picker
-                  TextFormField(
-                    controller: dateController,
-                    decoration: const InputDecoration(
-                      labelText: 'Tanggal',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                    readOnly: true,
-                    onTap: () async {
-                      final DateTime? picked = await showDatePicker(
-                        context: context,
-                        initialDate:
-                            DateTime.tryParse(dateController.text) ??
-                            DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (picked != null) {
-                        dateController.text = DateFormat(
-                          'yyyy-MM-dd',
-                        ).format(picked);
-                      }
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Pilih tanggal lembur';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Start Time Picker
-                  TextFormField(
-                    controller: startTimeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Jam Mulai',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.access_time),
-                    ),
-                    readOnly: true,
-                    onTap: () async {
-                      final TimeOfDay initialTime =
-                          _parseTimeOfDay(startTimeController.text) ??
-                          TimeOfDay.now();
-                      final TimeOfDay? picked = await showTimePicker(
-                        context: context,
-                        initialTime: initialTime,
-                      );
-                      if (picked != null) {
-                        // Format time as HH:MM
-                        startTimeController.text =
-                            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                      }
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Pilih jam mulai';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // End Time Picker
-                  TextFormField(
-                    controller: endTimeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Jam Selesai',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.access_time),
-                    ),
-                    readOnly: true,
-                    onTap: () async {
-                      final TimeOfDay initialTime =
-                          _parseTimeOfDay(endTimeController.text) ??
-                          TimeOfDay.now();
-                      final TimeOfDay? picked = await showTimePicker(
-                        context: context,
-                        initialTime: initialTime,
-                      );
-                      if (picked != null) {
-                        // Format time as HH:MM
-                        endTimeController.text =
-                            '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                      }
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Pilih jam selesai';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Notes TextField
-                  TextFormField(
-                    controller: keperluanController,
-                    decoration: const InputDecoration(
-                      labelText: 'Keperluan',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Masukkan keperluan lembur';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  // Show loading indicator
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return const AlertDialog(
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Menyimpan perubahan...'),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-
-                  try {
-                    // Prepare data for API
-                    Map<String, String> dataLembur = {
-                      'jenisLembur': selectedOvertimeType,
-                      'jamMulai': startTimeController.text,
-                      'jamSelesai': endTimeController.text,
-                      'tanggal': dateController.text,
-                      'keperluan': keperluanController.text,
-                    };
-
-                    // Call API to update overtime
-                    final response = await Api().updateLembur(
-                      dataLembur,
-                      overtimeData['id'].toString(),
-                    );
-
-                    // Close loading dialog
-                    Navigator.of(context).pop();
-
-                    // Close form dialog
-                    Navigator.of(context).pop();
-
-                    // Show success or error message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          response['message'] ??
-                              (response['status'] == true
-                                  ? 'Data lembur berhasil diperbarui'
-                                  : 'Gagal memperbarui data lembur'),
-                        ),
-                        backgroundColor: response['status'] == true
-                            ? Colors.green
-                            : Colors.red,
-                      ),
-                    );
-
-                    // Reload data if successful
-                    if (response['status'] == true) {
-                      overtimeController.reloadOvertimeData.changeVal('true');
-                    }
-                  } catch (e) {
-                    // Close loading dialog
-                    Navigator.of(context).pop();
-
-                    // Show error message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
-        );
-      },
-    );
+    // Call the onEdit callback to show the edit form
+    onEdit(overtimeData);
   }
 
   void _showDeleteConfirmation(BuildContext context) {
@@ -1565,12 +1297,10 @@ class OvertimeCard extends StatelessWidget {
     void safeShowSnackBar(String message) {
       try {
         // Only show the snackbar if the context is still valid
-        if (context != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(message)));
-        }
-      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+            } catch (e) {
         print('Error showing snackbar: $e');
       }
     }
@@ -1634,22 +1364,12 @@ class OvertimeCard extends StatelessWidget {
     // Check if photo data is available in base64 format
     final String? photoBase64 = overtimeData['photo'];
 
-    // Safe substring to avoid errors with null or empty strings
-    if (photoBase64 != null && photoBase64.isNotEmpty) {
-      print(
-        'Photo data: ${photoBase64.substring(0, photoBase64.length > 30 ? 30 : photoBase64.length)}...',
-      );
-    } else {
-      print('Photo data is null or empty');
-    }
-
     // Check for invalid or placeholder data
     if (photoBase64 == null ||
         photoBase64.isEmpty ||
         photoBase64 == '-' ||
         photoBase64 == 'xxxx' ||
         photoBase64.contains('data:image/png;base64,xxxx')) {
-      print('Invalid or placeholder image data, using default avatar');
       return _buildDefaultAvatar();
     }
 
@@ -1657,23 +1377,16 @@ class OvertimeCard extends StatelessWidget {
       // Extract the base64 part if it contains the data URI prefix
       String base64String = photoBase64;
       if (photoBase64.contains('base64,')) {
-        print('Found base64 prefix, extracting actual base64 data');
         base64String = photoBase64.split('base64,')[1];
-        print('Extracted base64 data length: ${base64String.length}');
       }
 
       // Check if the extracted string is valid
       if (base64String.isEmpty || base64String == 'xxxx') {
-        print('Empty or placeholder base64 data, using default avatar');
         return _buildDefaultAvatar();
       }
 
       // Decode base64 string to image
-      print(
-        'Attempting to decode base64 string of length: ${base64String.length}',
-      );
       final Uint8List bytes = base64Decode(base64String);
-      print('Successfully decoded base64 image, byte length: ${bytes.length}');
       return CircleAvatar(
         backgroundColor: const Color(0xFFE0E0E0),
         radius: avatarRadius,
@@ -1728,50 +1441,34 @@ class OvertimeCard extends StatelessWidget {
         return DateFormat(
           'EEEE, d MMMM yyyy',
           'id_ID',
-        ).format(dateTime); // e.g., "Senin, 12 Agustus 2025"
+        ).format(dateTime);
       }
     } catch (e) {
       print('Error formatting date: $e');
     }
-
+    
     return dateStr; // Return original string if parsing fails
   }
-
+  
   String _formatTime(String timeStr) {
     if (timeStr == '-' || timeStr.isEmpty) return '-';
-
+    
     try {
       // Try to parse the time string
-      TimeOfDay? timeOfDay;
-
-      // Handle different time formats
       if (timeStr.contains(':')) {
         final parts = timeStr.split(':');
         if (parts.length >= 2) {
           int hour = int.parse(parts[0]);
-          int minute = int.parse(
-            parts[1].split(' ')[0],
-          ); // Handle cases like "14:30:00"
-
-          // Check for AM/PM format
-          if (timeStr.toLowerCase().contains('pm') && hour < 12) {
-            hour += 12;
-          } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
-            hour = 0;
-          }
-
-          timeOfDay = TimeOfDay(hour: hour, minute: minute);
+          int minute = int.parse(parts[1].split(' ')[0]); // Handle cases like "14:30:00"
+          
+          // Format in 24-hour format with 'pukul' prefix in Indonesian style
+          return 'pukul ${hour.toString().padLeft(2, '0')}.${minute.toString().padLeft(2, '0')}';
         }
-      }
-
-      if (timeOfDay != null) {
-        // Format in 24-hour format with 'pukul' prefix in Indonesian style
-        return 'pukul ${timeOfDay.hour.toString().padLeft(2, '0')}.${timeOfDay.minute.toString().padLeft(2, '0')}';
       }
     } catch (e) {
       print('Error formatting time: $e');
     }
-
+    
     return timeStr; // Return original string if parsing fails
   }
 }

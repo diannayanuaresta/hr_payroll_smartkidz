@@ -8,10 +8,10 @@ class ThemeToggle extends StatelessWidget {
   final double size;
   
   const ThemeToggle({
-    Key? key,
+    super.key,
     this.showLabel = true,
     this.size = 24.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -53,9 +53,9 @@ class ThemeToggleSwitch extends StatelessWidget {
   final bool showLabel;
   
   const ThemeToggleSwitch({
-    Key? key,
+    super.key,
     this.showLabel = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

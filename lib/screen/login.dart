@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -233,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final masterApi = MasterApi();
         
         // Fetch and save category data
-        final categoryResponse = await masterApi.category();
+        final categoryResponse = await masterApi.categoryAbsensi();
         if (categoryResponse['status'] == true && categoryResponse['data'] != null) {
           appController.categoryLMB.removeAll();
           appController.categoryLMB.addAll(categoryResponse['data']);

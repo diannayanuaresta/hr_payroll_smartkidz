@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -11,7 +11,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  bool _obscureText = true;
+  final bool _obscureText = true;
 
   @override
   void dispose() {

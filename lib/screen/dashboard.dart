@@ -126,7 +126,6 @@ class _DashboardCardWithImage extends StatelessWidget {
   final String label;
 
   const _DashboardCardWithImage({
-    super.key,
     required this.imageUrl,
     required this.label,
   });
@@ -166,7 +165,7 @@ class _DashboardListTile extends StatelessWidget {
   final String title;
   final Function onTap;
 
-  const _DashboardListTile({super.key, required this.title, required this.onTap});
+  const _DashboardListTile({required this.title, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

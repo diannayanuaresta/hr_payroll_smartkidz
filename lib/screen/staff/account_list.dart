@@ -1,68 +1,60 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
+import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/main_controller.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hr_payroll_smartkidz/bloc/theme_bloc.dart';
-import 'package:hr_payroll_smartkidz/components/color_app.dart';
 import 'package:hr_payroll_smartkidz/components/theme_toggle.dart';
-import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 
-class MyAccountPage extends StatefulWidget {
+class MyAccountPage extends StatelessWidget {
   const MyAccountPage({super.key});
 
   @override
-  State<MyAccountPage> createState() => _MyAccountPageState();
-}
-
-class _MyAccountPageState extends State<MyAccountPage> {
-  final Api _api = Api();
-  bool _isLoading = true;
-  
-  @override
-  void initState() {
-    super.initState();
-    _loadProfileData();
+  Widget build(BuildContext context) {
+    // Load profile data when widget is first built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfileData();
+    });
+    
+    return BlocBuilder<CustomBloc, String>(
+      bloc: appController.isLoadingProfile ?? (appController.isLoadingProfile = CustomBloc()..changeVal('true')),
+      builder: (context, isLoadingState) {
+        final bool isLoading = isLoadingState == 'true';
+        
+        return ScreenTypeLayout.builder(
+          mobile: (_) => isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : AccountContent(padding: 16),
+          tablet: (_) => isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : AccountContent(padding: 32),
+          desktop: (_) => isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : AccountContent(padding: 64),
+          watch: (_) => isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : const WatchAccountContent(),
+        );
+      },
+    );
   }
   
   Future<void> _loadProfileData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    final Api api = Api();
+    appController.isLoadingProfile?.changeVal('true');
     
     try {
-      await _api.getProfile();
+      await api.getProfile();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: $e')),
-      );
+      // Error will be handled in the UI when displaying profile data
+      print('Error loading profile: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      appController.isLoadingProfile?.changeVal('false');
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScreenTypeLayout.builder(
-      mobile: (_) => _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : AccountContent(padding: 16),
-      tablet: (_) => _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : AccountContent(padding: 32),
-      desktop: (_) => _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : AccountContent(padding: 64),
-      watch: (_) => _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : const WatchAccountContent(),
-    );
   }
 }
 
@@ -104,14 +96,26 @@ class AccountContent extends StatelessWidget {
   }
 }
 
-class AccountForm extends StatefulWidget {
+class AccountForm extends StatelessWidget {
   const AccountForm({super.key});
 
   @override
-  State<AccountForm> createState() => _AccountFormState();
+  Widget build(BuildContext context) {
+    return BlocBuilder(
+      bloc: appController.userProfile,
+      builder: (context, state) {
+        return _AccountFormContent();
+      },
+    );
+  }
 }
 
-class _AccountFormState extends State<AccountForm> {
+class _AccountFormContent extends StatefulWidget {
+  @override
+  State<_AccountFormContent> createState() => _AccountFormContentState();
+}
+
+class _AccountFormContentState extends State<_AccountFormContent> {
   final _formKey = GlobalKey<FormState>();
   final Api _api = Api();
   bool _isLoading = false;
@@ -326,11 +330,11 @@ class _AccountFormState extends State<AccountForm> {
   
   // Show password change dialog
   void _showChangePasswordDialog() {
-    final _oldPasswordController = TextEditingController();
-    final _newPasswordController = TextEditingController();
-    final _confirmPasswordController = TextEditingController();
-    bool _isChangingPassword = false;
-    final _passwordFormKey = GlobalKey<FormState>();
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isChangingPassword = false;
+    final passwordFormKey = GlobalKey<FormState>();
     
     showDialog(
       context: context,
@@ -340,12 +344,12 @@ class _AccountFormState extends State<AccountForm> {
             return AlertDialog(
               title: const Text('Change Password'),
               content: Form(
-                key: _passwordFormKey,
+                key: passwordFormKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextFormField(
-                      controller: _oldPasswordController,
+                      controller: oldPasswordController,
                       obscureText: true,
                       decoration: const InputDecoration(
                         labelText: 'Current Password',
@@ -360,7 +364,7 @@ class _AccountFormState extends State<AccountForm> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _newPasswordController,
+                      controller: newPasswordController,
                       obscureText: true,
                       decoration: const InputDecoration(
                         labelText: 'New Password',
@@ -375,7 +379,7 @@ class _AccountFormState extends State<AccountForm> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _confirmPasswordController,
+                      controller: confirmPasswordController,
                       obscureText: true,
                       decoration: const InputDecoration(
                         labelText: 'Confirm New Password',
@@ -385,7 +389,7 @@ class _AccountFormState extends State<AccountForm> {
                         if (value == null || value.isEmpty) {
                           return 'Please confirm your new password';
                         }
-                        if (value != _newPasswordController.text) {
+                        if (value != newPasswordController.text) {
                           return 'Passwords do not match';
                         }
                         return null;
@@ -400,19 +404,19 @@ class _AccountFormState extends State<AccountForm> {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: _isChangingPassword
+                  onPressed: isChangingPassword
                       ? null
                       : () async {
-                          if (_passwordFormKey.currentState!.validate()) {
+                          if (passwordFormKey.currentState!.validate()) {
                             setState(() {
-                              _isChangingPassword = true;
+                              isChangingPassword = true;
                             });
                             
                             try {
                               final response = await _api.changePass(
-                                _oldPasswordController.text,
-                                _newPasswordController.text,
-                                _confirmPasswordController.text,
+                                oldPasswordController.text,
+                                newPasswordController.text,
+                                confirmPasswordController.text,
                               );
                               
                               Navigator.pop(context);
@@ -430,7 +434,7 @@ class _AccountFormState extends State<AccountForm> {
                               );
                             } catch (e) {
                               setState(() {
-                                _isChangingPassword = false;
+                                isChangingPassword = false;
                               });
                               
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -445,7 +449,7 @@ class _AccountFormState extends State<AccountForm> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3A7AFE),
                   ),
-                  child: _isChangingPassword
+                  child: isChangingPassword
                       ? const SizedBox(
                           height: 20,
                           width: 20,

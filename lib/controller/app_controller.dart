@@ -3,7 +3,6 @@ import 'package:hr_payroll_smartkidz/bloc/list_bloc.dart';
 import 'package:hr_payroll_smartkidz/bloc/list_map_bloc.dart';
 import 'package:hr_payroll_smartkidz/bloc/map_bloc.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
 import '../bloc/custom_bloc.dart';
@@ -23,7 +22,10 @@ class AppController{
   MapBloc userProfile = MapBloc();
   MapBloc userDetailProfile = MapBloc();
   MapBloc userAccess = MapBloc();
-
+  
+  // Add isLoadingProfile as a class property
+  CustomBloc? isLoadingProfile;
+  
   //latitude longitude
   CustomBloc latitudeCB = CustomBloc();
   CustomBloc longitudeCB = CustomBloc();
@@ -38,6 +40,18 @@ class AppController{
   // Letter categories
   ListMapBloc letterCategoryLMB = ListMapBloc();
   List<Map> letterCategoryListMap = [];
+  
+  // Add this line for cuti data
+  ListMapBloc cutiLMB = ListMapBloc();
+  List<Map> cutiListMap = [];
+  
+  // Add this line for izin data
+  ListMapBloc izinLMB = ListMapBloc();
+  List<Map> izinListMap = [];
+  
+  // Add this line for sakit data
+  ListMapBloc sakitLMB = ListMapBloc();
+  List<Map> sakitListMap = [];
   
   //Master Data ListMapBloc
   ListMapBloc jabatanLMB = ListMapBloc();
@@ -77,4 +91,6 @@ class AppController{
   
 }
 
+// Remove the global variable declaration
+// CustomBloc? isLoadingProfile;
 AppController appController = AppController();
