@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:hr_payroll_smartkidz/screen/login.dart';
 import 'package:hr_payroll_smartkidz/screen/register.dart';
 import 'package:hr_payroll_smartkidz/screen/main_menu.dart';
+import 'package:hr_payroll_smartkidz/screen/splash_screen.dart'; // Add this import
 import 'package:hr_payroll_smartkidz/screen/staff/account_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/approval_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/attend_list.dart';
-import 'package:hr_payroll_smartkidz/screen/dashboard.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/tim_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/document_list.dart';
 
@@ -13,6 +13,10 @@ class MyRoute {
   Route onRoute(RouteSettings settings) {
     switch (settings.name) {
       case "/":
+        return MaterialPageRoute(
+          builder: (BuildContext context) => const SplashScreen(), // Change to SplashScreen
+        );
+      case "/login":
         return MaterialPageRoute(
           builder: (BuildContext context) => const LoginScreen(),
         );
@@ -46,7 +50,7 @@ class MyRoute {
         );
       default:
         return MaterialPageRoute(
-          builder: (BuildContext context) => const HRMDashboard(),
+          builder: (BuildContext context) => const LoginScreen(),
         );
     }
   }

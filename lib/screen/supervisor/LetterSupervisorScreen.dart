@@ -7,14 +7,14 @@ import 'package:hr_payroll_smartkidz/services/api.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:intl/intl.dart';
 
-class LetterHRScreen extends StatefulWidget {
-  const LetterHRScreen({super.key});
+class LetterSupervisorScreen extends StatefulWidget {
+  const LetterSupervisorScreen({super.key});
 
   @override
-  State<LetterHRScreen> createState() => _LetterHRScreenState();
+  State<LetterSupervisorScreen> createState() => _LetterSupervisorScreenState();
 }
 
-class _LetterHRScreenState extends State<LetterHRScreen>
+class _LetterSupervisorScreenState extends State<LetterSupervisorScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -175,7 +175,7 @@ class _LetterHRScreenState extends State<LetterHRScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Approval Surat'),
+        title: const Text('Approval Surat Supervisor'),
         elevation: 0,
       ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -396,6 +396,9 @@ class _LetterHRScreenState extends State<LetterHRScreen>
                               context,
                               Map<String, dynamic>.from(approvalItem),
                             ),
+                            getStatusText: _getStatusText,
+                            getStatusColor: _getStatusColor,
+                            formatDate: _formatDate,
                           );
                         },
                       ),
@@ -464,6 +467,7 @@ class _LetterHRScreenState extends State<LetterHRScreen>
                     children: [
                       _buildInfoRow('Nama', approval['pegawaiNama'] ?? '-'),
                       _buildInfoRow('Jabatan', approval['pegawaiJabatan'] ?? '-'),
+                      _buildInfoRow('Divisi', approval['pegawaiDivisi'] ?? '-'),
                       
                       // Informasi spesifik berdasarkan jenis surat
                       if (selectedCategoryName == 'Surat Lembur') ...[                
@@ -471,19 +475,19 @@ class _LetterHRScreenState extends State<LetterHRScreen>
                         _buildInfoRow('Jam Mulai', approval['jamMulai'] ?? '-'),
                         _buildInfoRow('Jam Selesai', approval['jamSelesai'] ?? '-'),
                         _buildInfoRow('Jenis Lembur', _getLemburType(approval['jenisLembur'])),
-                        _buildInfoRow('Keperluan', approval['keperluan'] ?? '-'),
-                        _buildInfoRow('Tanggal Pengajuan', _formatDateTime(approval['createdAt'] ?? '-')),
-                      ] else if (selectedCategoryName == 'Surat Cuti' || 
-                                 selectedCategoryName == 'Surat Izin') ...[                
-                        _buildInfoRow('Tanggal Mulai', _formatDate(approval['tanggalAwal'] ?? '-')),
-                        _buildInfoRow('Tanggal Selesai', _formatDate(approval['tanggalAkhir'] ?? '-')),
-                        _buildInfoRow('Perihal', approval['perihal'] ?? '-'),
-                        _buildInfoRow('Tanggal Pengajuan', _formatDateTime(approval['createdAt'] ?? '-')),
+                        _buildInfoRow('Keperluan', approval['keterangan'] ?? '-'),
+                        _buildInfoRow('Tanggal Pengajuan', _formatDate(approval['createdAt'] ?? '-')),
+                      ] else if (selectedCategoryName == 'Surat Cuti') ...[                
+                        _buildInfoRow('Tanggal Mulai', _formatDate(approval['tanggalMulai'] ?? approval['tanggalAwal'] ?? '-')),
+                        _buildInfoRow('Tanggal Selesai', _formatDate(approval['tanggalSelesai'] ?? approval['tanggalAkhir'] ?? '-')),
+                        _buildInfoRow('Jumlah Hari', '${approval['jumlahHari'] ?? '-'} hari'),
+                        _buildInfoRow('Jenis Cuti', approval['jenisCuti'] ?? '-'),
+                        _buildInfoRow('Perihal', approval['keterangan'] ?? '-'),
                       ] else if (selectedCategoryName == 'Surat Sakit') ...[                
-                        _buildInfoRow('Tanggal Mulai', _formatDate(approval['tanggalAwal'] ?? '-')),
-                        _buildInfoRow('Tanggal Selesai', _formatDate(approval['tanggalAkhir'] ?? '-')),
+                        _buildInfoRow('Tanggal Mulai', _formatDate(approval['tanggalMulai'] ?? approval['tanggalAwal'] ?? '-')),
+                        _buildInfoRow('Tanggal Selesai', _formatDate(approval['tanggalSelesai'] ?? approval['tanggalAkhir'] ?? '-')),
+                        _buildInfoRow('Jumlah Hari', '${approval['jumlahHari'] ?? '-'} hari'),
                         _buildInfoRow('Keterangan', approval['keterangan'] ?? '-'),
-                        _buildInfoRow('Tanggal Pengajuan', _formatDateTime(approval['createdAt'] ?? '-')),
                         
                         // Foto bukti sakit
                         if (approval['foto'] != null && approval['foto'].toString().isNotEmpty) ...[                
@@ -545,6 +549,12 @@ class _LetterHRScreenState extends State<LetterHRScreen>
                             ),
                           ),
                         ],
+                      ] else if (selectedCategoryName == 'Surat Izin') ...[                
+                        _buildInfoRow('Tanggal Mulai', _formatDate(approval['tanggalMulai'] ?? approval['tanggalAwal'] ?? '-')),
+                        _buildInfoRow('Tanggal Selesai', _formatDate(approval['tanggalSelesai'] ?? approval['tanggalAkhir'] ?? '-')),
+                        _buildInfoRow('Jumlah Hari', '${approval['jumlahHari'] ?? '-'} hari'),
+                        _buildInfoRow('Jenis Izin', approval['jenisIzin'] ?? '-'),
+                        _buildInfoRow('Keterangan', approval['keterangan'] ?? '-'),
                       ],
                       
                       const Divider(height: 32),
@@ -569,8 +579,8 @@ class _LetterHRScreenState extends State<LetterHRScreen>
                       _buildApprovalStatus(
                         'HRD', 
                         approval['namaHrd'] ?? (approval['idHrd'] != null ? 'HRD' : '-'), 
-                        _getStatusText(selectedCategoryName == 'Surat Lembur' ? approval['statusHrd'] : approval['verifHrd']),
-                        _getStatusColor(selectedCategoryName == 'Surat Lembur' ? approval['statusHrd'] : approval['verifHrd']),
+                        _getStatusText(selectedCategoryName == 'Surat Lembur' ? approval['statusHRD'] : approval['verifHrd']),
+                        _getStatusColor(selectedCategoryName == 'Surat Lembur' ? approval['statusHRD'] : approval['verifHrd']),
                         approval['commentHrd'],
                         approval['approvedAtHrd'] ?? approval['verifAtHrd'],
                       ),
@@ -619,192 +629,6 @@ class _LetterHRScreenState extends State<LetterHRScreen>
         ),
       ),
     );
-  }
-
-  // Helper method to build approval status
-  Widget _buildApprovalStatus(String role, String name, String status, Color statusColor, String? comment, String? date) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('$role: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(name),
-              const Spacer(),
-            ],
-          ),
-          if (date != null && date.isNotEmpty) ...[            
-            const SizedBox(height: 4),
-            Text('Tanggal: ${_formatDateTime(date)}', style: const TextStyle(fontSize: 12)),
-          ],
-          if (comment != null && comment.isNotEmpty) ...[            
-            const SizedBox(height: 4),
-            Text('Komentar: $comment', style: const TextStyle(fontSize: 12)),
-          ],
-          SizedBox(height: 0.02*MediaQuery.of(context).size.height,),
-           Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to get status text
-  String _getStatusText(dynamic status) {
-    if (status == null) return 'Menunggu';
-    
-    // Get letter type from the selected category
-    final categories = appController.letterCategoryListMap;
-    final selectedIndex = letterController.currentIndexLetter.state;
-    final selectedCategoryName = categories[selectedIndex]['name'];
-    
-    if (selectedCategoryName == 'Surat Lembur') {
-      switch (status) {
-        case 0:
-        case 1:
-          return 'Menunggu';
-        case 2:
-          return 'Disetujui';
-        case 3:
-          return 'Ditolak';
-        default:
-          return 'Menunggu';
-      }
-    } else {
-      // Untuk Surat Cuti, Sakit, dan Izin
-      switch (status) {
-        case 1:
-          return 'Disetujui';
-        case 2:
-          return 'Ditolak';
-        case 0:
-        default:
-          return 'Menunggu';
-      }
-    }
-  }
-
-  // Helper method to get status color
-  Color _getStatusColor(dynamic status) {
-    if (status == null) return Colors.orange;
-    
-    // Get letter type from the selected category
-    final categories = appController.letterCategoryListMap;
-    final selectedIndex = letterController.currentIndexLetter.state;
-    final selectedCategoryName = categories[selectedIndex]['name'];
-    
-    if (selectedCategoryName == 'Surat Lembur') {
-      switch (status) {
-        case 0:
-        case 1:
-          return Colors.orange;
-        case 2:
-          return Colors.green;
-        case 3:
-          return Colors.red;
-        default:
-          return Colors.orange;
-      }
-    } else {
-      // Untuk Surat Cuti, Sakit, dan Izin
-      switch (status) {
-        case 1:
-          return Colors.green;
-        case 2:
-          return Colors.red;
-        case 0:
-        default:
-          return Colors.orange;
-      }
-    }
-  }
-
-  // Helper method to get letter icon
-  IconData _getLetterIcon(String letterType) {
-    switch (letterType) {
-      case 'Surat Lembur':
-        return Icons.access_time;
-      case 'Surat Cuti':
-        return Icons.beach_access;
-      case 'Surat Sakit':
-        return Icons.healing;
-      case 'Surat Izin':
-        return Icons.event_note;
-      default:
-        return Icons.description;
-    }
-  }
-
-  // Helper method to get letter color
-  Color _getLetterColor(String letterType) {
-    switch (letterType) {
-      case 'Surat Lembur':
-        return Colors.orange;
-      case 'Surat Cuti':
-        return Colors.blue;
-      case 'Surat Sakit':
-        return Colors.red;
-      case 'Surat Izin':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // Helper method to get lembur type
-  String _getLemburType(dynamic jenisLembur) {
-    if (jenisLembur == null) return 'Tidak diketahui';
-    
-    switch (jenisLembur) {
-      case 1:
-        return 'Lembur Biasa';
-      case 2:
-        return 'Lembur Hari Libur';
-      default:
-        return 'Tidak diketahui';
-    }
-  }
-
-  // Helper method to format date time
-  String _formatDateTime(String? dateTimeStr) {
-    if (dateTimeStr == null || dateTimeStr.isEmpty) return '-';
-    try {
-      final dateTime = DateTime.parse(dateTimeStr);
-      return DateFormat('dd MMM yyyy HH:mm').format(dateTime);
-    } catch (e) {
-      return dateTimeStr;
-    }
-  }
-
-  // Helper method to format date
-  String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return '-';
-    try {
-      final date = DateTime.parse(dateStr);
-      return DateFormat('dd MMM yyyy').format(date);
-    } catch (e) {
-      return dateStr;
-    }
-  }
-
-  // Helper method to get letter type name
-  String _getLetterTypeName(Map<String, dynamic> approval) {
-    return approval['letterType'] ?? 'Surat';
   }
   
   // Show approve confirmation dialog
@@ -952,19 +776,19 @@ class _LetterHRScreenState extends State<LetterHRScreen>
       
       if (selectedCategoryName == 'Surat Lembur') {
         response = await _api.handleTokenRefreshAndRetry(() async {
-          return await _api.approvalLemburByHRD(approvalId, body);
+          return await _api.approvalLemburBySupervisor(approvalId, body);
         });
       } else if (selectedCategoryName == 'Surat Cuti') {
         response = await _api.handleTokenRefreshAndRetry(() async {
-          return await _api.approvalCutiByHRD(approvalId, body);
+          return await _api.approvalCutiBySupervisor(approvalId, body);
         });
       } else if (selectedCategoryName == 'Surat Sakit') {
         response = await _api.handleTokenRefreshAndRetry(() async {
-          return await _api.approvalSakitByHRD(approvalId, body);
+          return await _api.approvalSakitBySupervisor(approvalId, body);
         });
       } else { // Surat Izin
         response = await _api.handleTokenRefreshAndRetry(() async {
-          return await _api.approvalIzinByHRD(approvalId, body);
+          return await _api.approvalIzinBySupervisor(approvalId, body);
         });
       }
       
@@ -1022,17 +846,25 @@ class _LetterHRScreenState extends State<LetterHRScreen>
       // Get approval ID
       String approvalId = approval['id'].toString();
       
-      // Call appropriate API based on letter type
+      // Call appropriate API based on letter type with token refresh handling
       Map<String, dynamic> response;
       
       if (selectedCategoryName == 'Surat Lembur') {
-        response = await _api.approvalLemburByHRD(approvalId, body);
+        response = await _api.handleTokenRefreshAndRetry(() async {
+          return await _api.approvalLemburBySupervisor(approvalId, body);
+        });
       } else if (selectedCategoryName == 'Surat Cuti') {
-        response = await _api.approvalCutiByHRD(approvalId, body);
+        response = await _api.handleTokenRefreshAndRetry(() async {
+          return await _api.approvalCutiBySupervisor(approvalId, body);
+        });
       } else if (selectedCategoryName == 'Surat Sakit') {
-        response = await _api.approvalSakitByHRD(approvalId, body);
+        response = await _api.handleTokenRefreshAndRetry(() async {
+          return await _api.approvalSakitBySupervisor(approvalId, body);
+        });
       } else { // Surat Izin
-        response = await _api.approvalIzinByHRD(approvalId, body);
+        response = await _api.handleTokenRefreshAndRetry(() async {
+          return await _api.approvalIzinBySupervisor(approvalId, body);
+        });
       }
       
       // Handle response
@@ -1080,6 +912,163 @@ class _LetterHRScreenState extends State<LetterHRScreen>
       ),
     );
   }
+  
+  // Helper method to build approval status
+  Widget _buildApprovalStatus(String role, String name, String status, Color statusColor, dynamic comment, dynamic approvedAt) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('$role: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(name),
+              const Spacer(),
+            ],
+          ),
+          if (approvedAt != null && approvedAt.toString().isNotEmpty) ...[            
+            const SizedBox(height: 4),
+            Text('Tanggal: ${_formatDateTime(approvedAt.toString())}', style: const TextStyle(fontSize: 12)),
+          ],
+          if (comment != null && comment.toString().isNotEmpty) ...[            
+            const SizedBox(height: 4),
+            Text('Komentar: ${comment.toString()}', style: const TextStyle(fontSize: 12)),
+          ],
+          SizedBox(height: 0.02*MediaQuery.of(context).size.height,),
+           Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+  
+  // Helper method to get letter icon
+  IconData _getLetterIcon(String letterType) {
+    switch (letterType) {
+      case 'Surat Lembur':
+        return Icons.access_time;
+      case 'Surat Cuti':
+        return Icons.beach_access;
+      case 'Surat Sakit':
+        return Icons.healing;
+      case 'Surat Izin':
+        return Icons.event_note;
+      default:
+        return Icons.description;
+    }
+  }
+  
+  // Helper method to get letter color
+  Color _getLetterColor(String letterType) {
+    switch (letterType) {
+      case 'Surat Lembur':
+        return Colors.orange;
+      case 'Surat Cuti':
+        return Colors.blue;
+      case 'Surat Sakit':
+        return Colors.red;
+      case 'Surat Izin':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  // Helper method to get lembur type
+  String _getLemburType(dynamic jenisLembur) {
+    if (jenisLembur == null) return 'Tidak diketahui';
+    
+    final jenis = jenisLembur is String ? int.tryParse(jenisLembur) ?? 0 : jenisLembur;
+    
+    switch (jenis) {
+      case 1:
+        return 'Lembur Biasa';
+      case 2:
+        return 'Lembur Hari Libur';
+      default:
+        return 'Tidak diketahui';
+    }
+  }
+  
+  // Helper method to format date time
+  String _formatDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty) return '-';
+    try {
+      final dateTime = DateTime.parse(dateTimeStr);
+      return DateFormat('dd MMM yyyy HH:mm').format(dateTime);
+    } catch (e) {
+      return dateTimeStr;
+    }
+  }
+  // Helper method to get status text
+  String _getStatusText(dynamic status) {
+    if (status == null) return 'Menunggu Persetujuan';
+    
+    // Get letter type from the selected category
+    final categories = appController.letterCategoryListMap;
+    final selectedIndex = letterController.currentIndexLetter.state;
+    final selectedCategoryName = categories[selectedIndex]['name'];
+    
+    // Konversi status ke integer
+    final statusInt = status is String ? int.tryParse(status) ?? 0 : status;
+    
+    // Logika baru: null/0/1 = pending, 2 = approve, 3 = reject
+    switch (statusInt) {
+      case 2:
+        return 'Disetujui';
+      case 3:
+        return 'Ditolak';
+      case 0:
+      case 1:
+      default:
+        return 'Menunggu Persetujuan';
+    }
+  }
+  
+  // Helper method to get status color
+  Color _getStatusColor(dynamic status) {
+    if (status == null) return Colors.orange;
+    
+    // Konversi status ke integer
+    final statusInt = status is String ? int.tryParse(status) ?? 0 : status;
+    
+    // Logika baru: null/0/1 = pending (orange), 2 = approve (green), 3 = reject (red)
+    switch (statusInt) {
+      case 2:
+        return Colors.green;
+      case 3:
+        return Colors.red;
+      case 0:
+      case 1:
+      default:
+        return Colors.orange;
+    }
+  }
+
+  // Helper method to format date
+  String _formatDate(String dateStr) {
+    if (dateStr == '-') return dateStr;
+    try {
+      final DateTime date = DateTime.parse(dateStr);
+      return DateFormat('dd MMM yyyy').format(date);
+    } catch (e) {
+      return dateStr;
+    }
+  }
 }
 
 // Approval Card Widget
@@ -1088,6 +1077,9 @@ class ApprovalCard extends StatelessWidget {
   final VoidCallback onApprove;
   final VoidCallback onReject;
   final VoidCallback onInfo;
+  final String Function(dynamic) getStatusText;
+  final Color Function(dynamic) getStatusColor;
+  final String Function(String) formatDate;
 
   const ApprovalCard({
     super.key,
@@ -1095,6 +1087,9 @@ class ApprovalCard extends StatelessWidget {
     required this.onApprove,
     required this.onReject,
     required this.onInfo,
+    required this.getStatusText,
+    required this.getStatusColor,
+    required this.formatDate,
   });
 
   @override
@@ -1201,63 +1196,44 @@ class ApprovalCard extends StatelessWidget {
                           ? 'Tanggal'
                           : 'Tanggal Mulai',
                       selectedCategoryName == 'Surat Lembur'
-                          ? _formatDate(approval['tanggal'] ?? '-')
-                          : _formatDate(approval['tanggalAwal'] ?? '-'),
+                          ? formatDate(approval['tanggal'] ?? '-')
+                          : formatDate(approval['tanggalAwal'] ?? approval['tanggalMulai'] ?? '-'),
                     ),
                   ),
                   Expanded(
                     child: _infoColumn(
                       context,
-                      selectedCategoryName == 'Surat Lembur' ? 'Jam Mulai' : 'Tanggal Selesai',
                       selectedCategoryName == 'Surat Lembur'
-                          ? approval['jamMulai'] ?? '-'
-                          : _formatDate(approval['tanggalAkhir'] ?? '-'),
+                          ? 'Jam'
+                          : 'Tanggal Selesai',
+                      selectedCategoryName == 'Surat Lembur'
+                          ? '${approval['jamMulai'] ?? '-'} - ${approval['jamSelesai'] ?? '-'}'
+                          : formatDate(approval['tanggalAkhir'] ?? approval['tanggalSelesai'] ?? '-'),
                     ),
                   ),
-                  if (selectedCategoryName == 'Surat Lembur') ...[                  
-                    Expanded(
-                      child: _infoColumn(
-                        context,
-                        'Jam Selesai',
-                        approval['jamSelesai'] ?? '-',
-                      ),
-                    ),
-                  ],
                 ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Keterangan',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                selectedCategoryName == 'Surat Lembur'
-                    ? approval['keperluan'] ?? '-'
-                    : selectedCategoryName == 'Surat Sakit'
-                        ? approval['keterangan'] ?? '-'
-                        : selectedCategoryName == 'Surat Izin'
-                            ? approval['perihal'] ?? '-'
-                            : approval['keterangan'] ?? approval['perihal'] ?? '-',
-                style: const TextStyle(fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              
-              // Status indicators
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  _buildStatusBadge(
-                    'Supervisor', 
-                    _getStatusText(selectedCategoryName == 'Surat Lembur' ? approval['statusSupervisor'] : approval['verifSupervisor']),
-                    _getStatusColor(selectedCategoryName == 'Surat Lembur' ? approval['statusSupervisor'] : approval['verifSupervisor']),
+                  Expanded(
+                    child: _buildStatusBadge(
+                      context,
+                      'Supervisor',
+                      selectedCategoryName == 'Surat Lembur' ? 
+                        approval['statusSupervisor'] : 
+                        approval['verifSupervisor'],
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  _buildStatusBadge(
-                    'HRD', 
-                    _getStatusText(selectedCategoryName == 'Surat Lembur' ? approval['statusHrd'] : approval['verifHrd']),
-                    _getStatusColor(selectedCategoryName == 'Surat Lembur' ? approval['statusHrd'] : approval['verifHrd']),
+                  Expanded(
+                    child: _buildStatusBadge(
+                      context,
+                      'HRD',
+                      selectedCategoryName == 'Surat Lembur' ? 
+                        approval['statusHRD'] : 
+                        approval['verifHrd'],
+                    ),
                   ),
                 ],
               ),
@@ -1268,131 +1244,65 @@ class ApprovalCard extends StatelessWidget {
     );
   }
 
-  // Helper method for status badge
-  Widget _buildStatusBadge(String role, String status, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            role,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(width: 4),
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            status,
-            style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to get status text
-  String _getStatusText(dynamic status) {
-    if (status == null) return 'Menunggu';
-    
-    // Get letter type from the selected category
-    final categories = appController.letterCategoryListMap;
-    final selectedIndex = letterController.currentIndexLetter.state;
-    final selectedCategoryName = categories[selectedIndex]['name'];
-    
-    if (selectedCategoryName == 'Surat Lembur') {
-      switch (status) {
-        case 0:
-        case 1:
-          return 'Menunggu';
-        case 2:
-          return 'Disetujui';
-        case 3:
-          return 'Ditolak';
-        default:
-          return 'Menunggu';
-      }
-    } else {
-      // Untuk Surat Cuti, Sakit, dan Izin
-      switch (status) {
-        case 1:
-          return 'Disetujui';
-        case 2:
-          return 'Ditolak';
-        case 0:
-        default:
-          return 'Menunggu';
-      }
-    }
-  }
-
-  // Helper method to get status color
-  Color _getStatusColor(dynamic status) {
-    if (status == null) return Colors.orange;
-    
-    // Get letter type from the selected category
-    final categories = appController.letterCategoryListMap;
-    final selectedIndex = letterController.currentIndexLetter.state;
-    final selectedCategoryName = categories[selectedIndex]['name'];
-    
-    if (selectedCategoryName == 'Surat Lembur') {
-      switch (status) {
-        case 0:
-        case 1:
-          return Colors.orange;
-        case 2:
-          return Colors.green;
-        case 3:
-          return Colors.red;
-        default:
-          return Colors.orange;
-      }
-    } else {
-      // Untuk Surat Cuti, Sakit, dan Izin
-      switch (status) {
-        case 1:
-          return Colors.green;
-        case 2:
-          return Colors.red;
-        case 0:
-        default:
-          return Colors.orange;
-      }
-    }
-  }
-
-  // Helper method for info columns
   Widget _infoColumn(BuildContext context, String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 14)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
 
-  // Helper method to format date
-  String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return '-';
-    try {
-      final date = DateTime.parse(dateStr);
-      return DateFormat('dd MMM yyyy').format(date);
-    } catch (e) {
-      return dateStr;
-    }
+  Widget _buildStatusBadge(BuildContext context, String label, dynamic status) {
+    // Get letter type from the selected category
+    final categories = appController.letterCategoryListMap;
+    final selectedIndex = letterController.currentIndexLetter.state;
+    final selectedCategoryName = categories[selectedIndex]['name'];
+    
+    String statusText = getStatusText(status);
+    Color statusColor = getStatusColor(status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: statusColor.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            statusText,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: statusColor,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

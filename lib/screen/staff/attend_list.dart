@@ -316,12 +316,12 @@ class AttendanceScreen extends StatelessWidget {
                             data: Theme.of(context).copyWith(
                               datePickerTheme: DatePickerThemeData(
                                 confirmButtonStyle: ButtonStyle(
-                                  foregroundColor: MaterialStateProperty.all<Color>(
+                                  foregroundColor: WidgetStateProperty.all<Color>(
                                     isDark ? ColorApp.darkTertiary : ColorApp.lightPrimary,
                                   ),
                                 ),
                                 cancelButtonStyle: ButtonStyle(
-                                  foregroundColor: MaterialStateProperty.all<Color>(
+                                  foregroundColor: WidgetStateProperty.all<Color>(
                                     isDark ? ColorApp.darkTertiary : ColorApp.lightPrimary,
                                   ),
                                 ),
@@ -362,12 +362,12 @@ class AttendanceScreen extends StatelessWidget {
                             data: Theme.of(context).copyWith(
                               datePickerTheme: DatePickerThemeData(
                                 confirmButtonStyle: ButtonStyle(
-                                  foregroundColor: MaterialStateProperty.all<Color>(
+                                  foregroundColor: WidgetStateProperty.all<Color>(
                                     isDark ? ColorApp.darkTertiary : ColorApp.lightPrimary,
                                   ),
                                 ),
                                 cancelButtonStyle: ButtonStyle(
-                                  foregroundColor: MaterialStateProperty.all<Color>(
+                                  foregroundColor: WidgetStateProperty.all<Color>(
                                     isDark ? ColorApp.darkTertiary : ColorApp.lightPrimary,
                                   ),
                                 ),

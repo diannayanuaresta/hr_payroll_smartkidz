@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart' show BlocBuilder, BlocBase;
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/letter_controller.dart';
 import 'package:hr_payroll_smartkidz/screen/hrd/LetterHRScreen.dart';
+import 'package:hr_payroll_smartkidz/screen/supervisor/LetterSupervisorScreen.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
 import 'package:responsive_builder/responsive_builder.dart';
 import 'package:intl/intl.dart';
@@ -468,8 +469,10 @@ class _LetterScreenState extends State<LetterScreen>
             builder: (context, state) {
               // Cek apakah user memiliki akses HR
               final bool isHR = (state['divisiNama'] == 'HR' || state['jabatanNama'] == 'HR');
-              
+              // Cek apakah user adalah supervisor
+              final bool isSupervisor = (state['jabatanNama'] == 'Supervisor' || state['jabatanNama'] == 'Manager');
               if (isHR) {
+                // Jika user hanya memiliki akses HR
                 return Padding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 8),
                   child: GestureDetector(
@@ -506,8 +509,46 @@ class _LetterScreenState extends State<LetterScreen>
                     ),
                   ),
                 );
+              } else if (isSupervisor) {
+                // Jika user hanya memiliki akses Supervisor
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LetterSupervisorScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green[300]!),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.supervisor_account, color: Colors.green[800]),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Akses Halaman Supervisor',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
               } else {
-                return const SizedBox.shrink(); // Tidak menampilkan apa-apa jika bukan HR
+                return const SizedBox.shrink(); // Tidak menampilkan apa-apa jika bukan HR atau Supervisor
               }
             },
           ),
@@ -1550,7 +1591,7 @@ class _LetterScreenState extends State<LetterScreen>
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('Edit ${letterType}'),
+              title: Text('Edit $letterType'),
               content: SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -2208,7 +2249,7 @@ class _LetterScreenState extends State<LetterScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Detail ${letterType}'),
+          title: Text('Detail $letterType'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2345,23 +2386,29 @@ class _LetterScreenState extends State<LetterScreen>
 
   // Helper method to get supervisor status text
   String _getSupervisorStatusText(dynamic status) {
-    if (status == 1) {
-      return 'Disetujui';
-    } else if (status == 2) {
-      return 'Ditolak';
+    // Konversi nilai ke integer jika string
+    final statusInt = status is String ? int.tryParse(status) ?? 0 : status ?? 0;
+    
+    if (statusInt == 2) {
+      return 'Disetujui by Supervisor';
+    } else if (statusInt == 3) {
+      return 'Ditolak by Supervisor';
     } else {
-      return 'Menunggu';
+      return 'Menunggu by Supervisor';
     }
   }
 
   // Helper method to get HRD status text
   String _getHrdStatusText(dynamic status) {
-    if (status == 1) {
-      return 'Disetujui';
-    } else if (status == 2) {
-      return 'Ditolak';
+    // Konversi nilai ke integer jika string
+    final statusInt = status is String ? int.tryParse(status) ?? 0 : status ?? 0;
+    
+    if (statusInt == 2) {
+      return 'Disetujui by HRD';
+    } else if (statusInt == 3) {
+      return 'Ditolak by HRD';
     } else {
-      return 'Menunggu';
+      return 'Menunggu by HRD';
     }
   }
 
@@ -2443,12 +2490,12 @@ class LetterCard extends StatelessWidget {
   final VoidCallback onInfo;
 
   const LetterCard({
-    Key? key,
+    super.key,
     required this.letter,
     required this.onEdit,
     required this.onDelete,
     required this.onInfo,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2646,15 +2693,19 @@ class LetterCard extends StatelessWidget {
     Color badgeColor;
     String badgeText;
 
-    if (status == 1) {
+    // Konversi nilai ke integer jika string
+    final statusInt = status is String ? int.tryParse(status) ?? 0 : status ?? 0;
+
+    if (statusInt == 2) {
       badgeColor = Colors.green;
-      badgeText = 'Approved by Supervisor';
-    } else if (status == 2) {
+      badgeText = 'Disetujui by Supervisor';
+    } else if (statusInt == 3) {
       badgeColor = Colors.red;
-      badgeText = 'Rejected by Supervisor';
+      badgeText = 'Ditolak by Supervisor';
     } else {
+      // Untuk status null, 0, atau 1
       badgeColor = Colors.orange;
-      badgeText = 'Pending Supervisor';
+      badgeText = 'Pending by Supervisor';
     }
 
     return Container(
@@ -2679,15 +2730,19 @@ class LetterCard extends StatelessWidget {
     Color badgeColor;
     String badgeText;
 
-    if (status == 1) {
+    // Konversi nilai ke integer jika string
+    final statusInt = status is String ? int.tryParse(status) ?? 0 : status ?? 0;
+
+    if (statusInt == 2) {
       badgeColor = Colors.green;
-      badgeText = 'Approved by HRD';
-    } else if (status == 2) {
+      badgeText = 'Disetujui by HRD';
+    } else if (statusInt == 3) {
       badgeColor = Colors.red;
-      badgeText = 'Rejected by HRD';
+      badgeText = 'Ditolak by HRD';
     } else {
+      // Untuk status null, 0, atau 1
       badgeColor = Colors.orange;
-      badgeText = 'Pending HRD';
+      badgeText = 'Pending by HRD';
     }
 
     return Container(
@@ -2710,17 +2765,24 @@ class LetterCard extends StatelessWidget {
 
 // Helper method to determine status based on supervisor and HRD approval
 String _determineStatus(dynamic supervisorStatus, dynamic hrdStatus) {
-  if (supervisorStatus == 0 || supervisorStatus == null) {
+  // Konversi nilai ke integer jika string
+  final supStatus = supervisorStatus is String ? int.tryParse(supervisorStatus) ?? 0 : supervisorStatus ?? 0;
+  final hrdStat = hrdStatus is String ? int.tryParse(hrdStatus) ?? 0 : hrdStatus ?? 0;
+  
+  if (supStatus == 0 || supStatus == 1) {
     return 'Pending';
-  } else if (supervisorStatus == 2 || (hrdStatus != null && hrdStatus == 2)) {
-    return 'Rejected';
-  } else if (supervisorStatus == 1 && (hrdStatus == null || hrdStatus == 0)) {
-    return 'Approved by Supervisor';
-  } else if (supervisorStatus == 1 && hrdStatus == 1) {
-    return 'Approved';
-  } else {
-    return 'Pending';
+  } else if (supStatus == 3) {
+    return 'Ditolak';
+  } else if (supStatus == 2) {
+    if (hrdStat == 0 || hrdStat == 1) {
+      return 'Pending';
+    } else if (hrdStat == 3) {
+      return 'Ditolak';
+    } else if (hrdStat == 2) {
+      return 'Disetujui';
+    }
   }
+  return 'Pending';
 }
 
 // Helper method to get letter type name

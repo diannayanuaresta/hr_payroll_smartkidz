@@ -133,6 +133,38 @@ class ColorApp {
     );
   }
   
+  // Add this method to get TimePickerThemeData
+  static TimePickerThemeData getTimePickerTheme(Brightness brightness) {
+    return TimePickerThemeData(
+      backgroundColor: getCardColor(brightness),
+      // Remove hourMinuteTextColor and dayPeriodTextColor properties
+      dialHandColor: getPrimary(brightness),
+      dialBackgroundColor: getCardColor(brightness),
+      entryModeIconColor: getPrimary(brightness),
+      // These button styles control the OK and CANCEL buttons
+      cancelButtonStyle: ButtonStyle(
+        foregroundColor: MaterialStateProperty.all<Color>(
+          brightness == Brightness.dark ? Colors.white : Colors.black87
+        ),
+      ),
+      confirmButtonStyle: ButtonStyle(
+        foregroundColor: MaterialStateProperty.all<Color>(
+          brightness == Brightness.dark ? Colors.white : Colors.black87
+        ),
+        backgroundColor: MaterialStateProperty.all<Color>(
+          brightness == Brightness.dark ? darkPrimary : lightPrimary
+        ),
+        overlayColor: MaterialStateProperty.all<Color>(
+          brightness == Brightness.dark ? darkSecondary.withOpacity(0.2) : lightSecondary.withOpacity(0.2)
+        ),
+      ),
+      // Use only TextStyle properties for text styling
+      helpTextStyle: TextStyle(color: getTextPrimary(brightness)),
+      hourMinuteTextStyle: TextStyle(color: getTextPrimary(brightness)),
+      dayPeriodTextStyle: TextStyle(color: getTextPrimary(brightness)),
+    );
+  }
+  
   // Update the getTheme method to include datePickerTheme
   static ThemeData getTheme(BuildContext context, bool isDarkMode) {
     final brightness = isDarkMode ? Brightness.dark : Brightness.light;
@@ -142,7 +174,8 @@ class ColorApp {
       primaryColor: getPrimary(brightness),
       scaffoldBackgroundColor: getBackground(brightness),
       cardColor: getCardColor(brightness),
-      datePickerTheme: getDatePickerTheme(brightness), // Add this line
+      datePickerTheme: getDatePickerTheme(brightness),
+      timePickerTheme: getTimePickerTheme(brightness), // Add this line
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: getPrimary(brightness),

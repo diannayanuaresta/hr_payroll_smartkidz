@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get_storage/get_storage.dart';
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:http/http.dart' as http;
+import 'package:nb_utils/nb_utils.dart'; // Import nb_utils to access navigatorKey
 
 GetStorage user = GetStorage();
 
@@ -26,11 +27,14 @@ class Api {
       // First attempt with current token
       var result = await originalApiCall();
 
-      // Check if the error is due to invalid token
+      // Check if the error is due to invalid token or expired token
       if (result['status'] == false &&
           result['message'] != null &&
-          result['message'].toString().contains('Invalid Token')) {
-        print('Token invalid, attempting to refresh...');
+          (result['message'].toString().contains('Invalid Token') ||
+           result['message'].toString().contains('Expired Token') ||
+           result['message'].toString().contains('Token Expired') ||
+           (result['code'] != null && result['code'] == 401))) {
+        print('Token invalid or expired, attempting to refresh...');
 
         // Try to refresh the token
         var refreshResult = await tokenRefresh();
@@ -41,7 +45,9 @@ class Api {
           return await originalApiCall();
         } else {
           print('Token refresh failed: ${refreshResult['message']}');
-          // If refresh fails, return the refresh error
+          // If refresh fails, force logout and redirect to login screen
+          await _handleTokenRefreshFailure();
+          // Return the refresh error
           return refreshResult;
         }
       }
@@ -52,6 +58,32 @@ class Api {
       print('Error in handleTokenRefreshAndRetry: $e');
       return {'status': false, 'message': 'Error handling token refresh: $e'};
     }
+  }
+
+  // Helper method to handle token refresh failure
+  Future<void> _handleTokenRefreshFailure() async {
+    // Clear user data
+    user.remove('token');
+    user.remove('email');
+    user.remove('pass');
+    tglLoginLast.remove('date');
+
+    // Reset app controller data
+    appController.userProfile.changeVal({});
+    appController.userAccess.changeVal({});
+    
+    // Reset data master
+    appController.categoryLMB.removeAll();
+    appController.categoryListMap = [];
+    appController.jabatanLMB.removeAll();
+    appController.jabatanListMap = [];
+    appController.divisiLMB.removeAll();
+    appController.divisiListMap = [];
+    appController.jenisLemburLMB.removeAll();
+    appController.jenisLemburListMap = [];
+    
+    // Navigate to login screen using the global navigatorKey
+    navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
   Map<String, String> get headers => {
@@ -122,7 +154,15 @@ class Api {
     var url = Uri.parse('${this.url}/auth/absensi/refresh');
 
     try {
-      var response = await http.post(url, headers: headers);
+      var response = await http.post(url, headers: headers)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              throw TimeoutException(
+                'The connection has timed out during token refresh, please try again!',
+              );
+            },
+          );
       var data = json.decode(response.body);
 
       print('Token refresh attempt: $data');
@@ -135,19 +175,13 @@ class Api {
       } else {
         print('Token refresh failed: ${data['message']}');
         // If token refresh fails, you might want to force logout
-        if (data['code'] == 401) {
-          // Clear user data
-          user.remove('token');
-          user.remove('email');
-          user.remove('pass');
-          tglLoginLast.remove('date');
-
-          // Reset app controller data
-          appController.userProfile.changeVal({});
-          appController.userAccess.changeVal({});
-
-          // You might want to navigate to login screen here
-          // This would typically be handled by the UI layer
+        if (data['code'] == 401 || 
+            (data['message'] != null && 
+             (data['message'].toString().contains('Invalid Token') || 
+              data['message'].toString().contains('Expired Token') || 
+              data['message'].toString().contains('Token Expired')))) {
+          // Clear user data and handle logout
+          await _handleTokenRefreshFailure();
         }
         return data;
       }
@@ -155,7 +189,9 @@ class Api {
       print('Error refreshing token: $e');
       return {
         'status': false,
-        'message': 'Error connecting to server during token refresh: $e',
+        'message': e is TimeoutException
+            ? e.message
+            : 'Error connecting to server during token refresh: $e',
         'code': 500,
       };
     }
@@ -972,74 +1008,7 @@ class Api {
     var response = await http.put(url, headers: header, body: body);
     var data = json.decode(response.body);
     print('Category Response: $data');
-    // var data = {
-    //   "status": true,
-    //   "message": "Success",
-    //   "code": 200,
-    //   "data": [
-    //     {
-    //         "id": 1,
-    //         "code": "SKC0001",
-    //         "name": "Smartkidz Graha Raya"
-    //     },
-    //     {
-    //         "id": 2,
-    //         "code": "SKC0002",
-    //         "name": "Smartkidz Kelapa Dua"
-    //     },
-    //     {
-    //         "id": 3,
-    //         "code": "SKC0003",
-    //         "name": "Smartkidz Spatan"
-    //     },
-    //     {
-    //         "id": 4,
-    //         "code": "SKC0004",
-    //         "name": "Smartkidz Ceger Raya"
-    //     },
-    //     {
-    //         "id": 5,
-    //         "code": "SKC0005",
-    //         "name": "Smartkidz Ahmad Yani Tangerang"
-    //     },
-    //     {
-    //         "id": 6,
-    //         "code": "SKC0006",
-    //         "name": "Smartkidz Grand Batavia"
-    //     },
-    //     {
-    //         "id": 7,
-    //         "code": "SKC0007",
-    //         "name": "Smartkidz Poris Gaga"
-    //     },
-    //     {
-    //         "id": 8,
-    //         "code": "SKC0008",
-    //         "name": "Smartkidz Cileduk"
-    //     },
-    //     {
-    //         "id": 9,
-    //         "code": "SKC0009",
-    //         "name": "Smartkidz Permata Regency"
-    //     },
-    //     {
-    //         "id": 10,
-    //         "code": "SKC0010",
-    //         "name": "Smartkidz Cipondoh"
-    //     },
-    //     {
-    //         "id": 11,
-    //         "code": "SKC0011",
-    //         "name": "Smartkidz Karawaci"
-    //     },
-    //     {
-    //         "id": 12,
-    //         "code": "SKC0012",
-    //         "name": "Smartkidz Semanan"
-    //     }
-    //   ]
-    // };
-    // print(data);
+    
     print(data);
     return data;
   }
@@ -1056,74 +1025,7 @@ class Api {
     var response = await http.put(url, headers: header, body: body);
     var data = json.decode(response.body);
     print('Category Response: $data');
-    // var data = {
-    //   "status": true,
-    //   "message": "Success",
-    //   "code": 200,
-    //   "data": [
-    //     {
-    //         "id": 1,
-    //         "code": "SKC0001",
-    //         "name": "Smartkidz Graha Raya"
-    //     },
-    //     {
-    //         "id": 2,
-    //         "code": "SKC0002",
-    //         "name": "Smartkidz Kelapa Dua"
-    //     },
-    //     {
-    //         "id": 3,
-    //         "code": "SKC0003",
-    //         "name": "Smartkidz Spatan"
-    //     },
-    //     {
-    //         "id": 4,
-    //         "code": "SKC0004",
-    //         "name": "Smartkidz Ceger Raya"
-    //     },
-    //     {
-    //         "id": 5,
-    //         "code": "SKC0005",
-    //         "name": "Smartkidz Ahmad Yani Tangerang"
-    //     },
-    //     {
-    //         "id": 6,
-    //         "code": "SKC0006",
-    //         "name": "Smartkidz Grand Batavia"
-    //     },
-    //     {
-    //         "id": 7,
-    //         "code": "SKC0007",
-    //         "name": "Smartkidz Poris Gaga"
-    //     },
-    //     {
-    //         "id": 8,
-    //         "code": "SKC0008",
-    //         "name": "Smartkidz Cileduk"
-    //     },
-    //     {
-    //         "id": 9,
-    //         "code": "SKC0009",
-    //         "name": "Smartkidz Permata Regency"
-    //     },
-    //     {
-    //         "id": 10,
-    //         "code": "SKC0010",
-    //         "name": "Smartkidz Cipondoh"
-    //     },
-    //     {
-    //         "id": 11,
-    //         "code": "SKC0011",
-    //         "name": "Smartkidz Karawaci"
-    //     },
-    //     {
-    //         "id": 12,
-    //         "code": "SKC0012",
-    //         "name": "Smartkidz Semanan"
-    //     }
-    //   ]
-    // };
-    // print(data);
+    
     print(data);
     return data;
   }
@@ -1184,74 +1086,7 @@ class Api {
     var response = await http.put(url, headers: header, body: body);
     var data = json.decode(response.body);
     print('Category Response: $data');
-    // var data = {
-    //   "status": true,
-    //   "message": "Success",
-    //   "code": 200,
-    //   "data": [
-    //     {
-    //         "id": 1,
-    //         "code": "SKC0001",
-    //         "name": "Smartkidz Graha Raya"
-    //     },
-    //     {
-    //         "id": 2,
-    //         "code": "SKC0002",
-    //         "name": "Smartkidz Kelapa Dua"
-    //     },
-    //     {
-    //         "id": 3,
-    //         "code": "SKC0003",
-    //         "name": "Smartkidz Spatan"
-    //     },
-    //     {
-    //         "id": 4,
-    //         "code": "SKC0004",
-    //         "name": "Smartkidz Ceger Raya"
-    //     },
-    //     {
-    //         "id": 5,
-    //         "code": "SKC0005",
-    //         "name": "Smartkidz Ahmad Yani Tangerang"
-    //     },
-    //     {
-    //         "id": 6,
-    //         "code": "SKC0006",
-    //         "name": "Smartkidz Grand Batavia"
-    //     },
-    //     {
-    //         "id": 7,
-    //         "code": "SKC0007",
-    //         "name": "Smartkidz Poris Gaga"
-    //     },
-    //     {
-    //         "id": 8,
-    //         "code": "SKC0008",
-    //         "name": "Smartkidz Cileduk"
-    //     },
-    //     {
-    //         "id": 9,
-    //         "code": "SKC0009",
-    //         "name": "Smartkidz Permata Regency"
-    //     },
-    //     {
-    //         "id": 10,
-    //         "code": "SKC0010",
-    //         "name": "Smartkidz Cipondoh"
-    //     },
-    //     {
-    //         "id": 11,
-    //         "code": "SKC0011",
-    //         "name": "Smartkidz Karawaci"
-    //     },
-    //     {
-    //         "id": 12,
-    //         "code": "SKC0012",
-    //         "name": "Smartkidz Semanan"
-    //     }
-    //   ]
-    // };
-    // print(data);
+    
     print(data);
     return data;
   }
@@ -1268,74 +1103,7 @@ class Api {
     var response = await http.put(url, headers: header, body: body);
     var data = json.decode(response.body);
     print('Category Response: $data');
-    // var data = {
-    //   "status": true,
-    //   "message": "Success",
-    //   "code": 200,
-    //   "data": [
-    //     {
-    //         "id": 1,
-    //         "code": "SKC0001",
-    //         "name": "Smartkidz Graha Raya"
-    //     },
-    //     {
-    //         "id": 2,
-    //         "code": "SKC0002",
-    //         "name": "Smartkidz Kelapa Dua"
-    //     },
-    //     {
-    //         "id": 3,
-    //         "code": "SKC0003",
-    //         "name": "Smartkidz Spatan"
-    //     },
-    //     {
-    //         "id": 4,
-    //         "code": "SKC0004",
-    //         "name": "Smartkidz Ceger Raya"
-    //     },
-    //     {
-    //         "id": 5,
-    //         "code": "SKC0005",
-    //         "name": "Smartkidz Ahmad Yani Tangerang"
-    //     },
-    //     {
-    //         "id": 6,
-    //         "code": "SKC0006",
-    //         "name": "Smartkidz Grand Batavia"
-    //     },
-    //     {
-    //         "id": 7,
-    //         "code": "SKC0007",
-    //         "name": "Smartkidz Poris Gaga"
-    //     },
-    //     {
-    //         "id": 8,
-    //         "code": "SKC0008",
-    //         "name": "Smartkidz Cileduk"
-    //     },
-    //     {
-    //         "id": 9,
-    //         "code": "SKC0009",
-    //         "name": "Smartkidz Permata Regency"
-    //     },
-    //     {
-    //         "id": 10,
-    //         "code": "SKC0010",
-    //         "name": "Smartkidz Cipondoh"
-    //     },
-    //     {
-    //         "id": 11,
-    //         "code": "SKC0011",
-    //         "name": "Smartkidz Karawaci"
-    //     },
-    //     {
-    //         "id": 12,
-    //         "code": "SKC0012",
-    //         "name": "Smartkidz Semanan"
-    //     }
-    //   ]
-    // };
-    // print(data);
+    
     print(data);
     return data;
   }
@@ -1506,7 +1274,32 @@ class MasterApi {
   Future<Map<String, dynamic>> _handleTokenRefresh(
     Function originalApiCall,
   ) async {
-    return _api.handleTokenRefreshAndRetry(originalApiCall);
+    try {
+      // First attempt with current token
+      var result = await originalApiCall();
+      
+      // Only attempt token refresh if it's not the first login
+      // and we get a specific token error
+      if (result['status'] == false &&
+          result['message'] != null &&
+          (result['message'].toString().contains('Invalid Token') ||
+           result['message'].toString().contains('Expired Token') ||
+           result['message'].toString().contains('Token Expired') ||
+           (result['code'] != null && result['code'] == 401))) {
+        
+        // Check if this is the first login attempt
+        if (tglLoginLast.read('date') != null) {
+          // Not the first login, so try to refresh the token
+          return _api.handleTokenRefreshAndRetry(originalApiCall);
+        }
+      }
+      
+      // Return the original result
+      return result;
+    } catch (e) {
+      print('Error in _handleTokenRefresh: $e');
+      return {'status': false, 'message': 'Error handling API call: $e'};
+    }
   }
 
   Future categoryAbsensi() async {

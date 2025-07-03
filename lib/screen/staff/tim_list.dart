@@ -237,13 +237,27 @@ class TeamListScreen extends StatelessWidget {
               ),
               Text(
                 'Jabatan: $jabatan',
-                style: TextStyle(fontSize: fontSize - 2),
+                style: TextStyle(
+                  fontSize: fontSize - 2,
+                  // Gunakan warna yang lebih kontras untuk mode gelap/terang
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.white 
+                      : Colors.black87,
+                  fontWeight: FontWeight.w500, // Tambahkan ketebalan font
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
                 'Status: ${status ?? "Tidak ada"}',
-                style: TextStyle(fontSize: fontSize - 2),
+                style: TextStyle(
+                  fontSize: fontSize - 2,
+                  // Gunakan warna yang lebih kontras untuk mode gelap/terang
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.white 
+                      : Colors.black87,
+                  fontWeight: FontWeight.w500, // Tambahkan ketebalan font
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -322,15 +336,30 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Tentukan warna latar belakang dan teks berdasarkan mode tema
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDarkMode
+        ? (color ?? Theme.of(context).primaryColor).withOpacity(0.3) // Lebih terang di mode gelap
+        : (color ?? Theme.of(context).primaryColor).withOpacity(0.1);
+    
+    final textColor = isDarkMode
+        ? Colors.white // Teks putih di mode gelap
+        : color ?? Theme.of(context).primaryColor;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: (color ?? Theme.of(context).primaryColor).withOpacity(0.1),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
+        // Tambahkan border untuk meningkatkan kontras
+        border: Border.all(
+          color: (color ?? Theme.of(context).primaryColor).withOpacity(isDarkMode ? 0.5 : 0.3),
+          width: 1,
+        ),
       ),
       child: Text(
         label,
-        style: TextStyle(color: color ?? Theme.of(context).primaryColor, fontSize: 10),
+        style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.w500),
       ),
     );
   }

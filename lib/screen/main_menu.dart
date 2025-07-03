@@ -7,7 +7,6 @@ import 'package:hr_payroll_smartkidz/bloc/custom_bloc.dart';
 import 'package:hr_payroll_smartkidz/controller/app_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/attend_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/main_controller.dart';
-import 'package:hr_payroll_smartkidz/controller/overtime_controller.dart';
 import 'package:hr_payroll_smartkidz/controller/tim_controller.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/account_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/attend_list.dart';
@@ -15,7 +14,6 @@ import 'package:hr_payroll_smartkidz/screen/staff/tim_list.dart';
 import 'package:hr_payroll_smartkidz/screen/staff/letter_list.dart';
 import 'package:hr_payroll_smartkidz/services/api.dart';
 import 'package:responsive_builder/responsive_builder.dart';
-import 'package:intl/intl.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 
